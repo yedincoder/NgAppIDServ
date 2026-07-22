@@ -1,0 +1,54 @@
+{
+  "name": "ngappidserv",
+  "version": "1.0.1",
+  "description": "NgAppIDServ - Web Server Lokal by @Yedincoder",
+  "author": "NgAppID Teams <yedincoder@gmail.com>",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "obfuscate": "javascript-obfuscator main.js --output main.obfuscated.js --compact true --control-flow-flattening true --dead-code-injection true",
+    "build": "npm run obfuscate && electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^24.13.3",
+    "javascript-obfuscator": "^5.5.0"
+  },
+  "build": {
+    "appId": "com.ngappid.server",
+    "productName": "NgAppIDServ",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "@Yedincoder",
+        "repo": "ngappidserv"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.png",
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true,
+      "include": "installer.nsh"
+    },
+    "asar": true,
+    "extraResources": [
+      "bin/**",
+      "data/**",
+      "www/**"
+    ],
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.8",
+    "electron-updater": "^6.8.9",
+    "node-machine-id": "^1.1.12"
+  }
+}

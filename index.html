@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>NgAppIDServ - Webserver Local Modern v1.0.1</title>
+    <style>
+        /* Tema Warna Modern: Dark Grey & Orange */
+        :root {
+            --bg-dark: #121212;
+            --bg-panel: #1E1E1E;
+            --text-main: #E0E0E0;
+            --text-muted: #888;
+            --accent-orange: #F57C00;
+            --accent-orange-hover: #FF9800;
+            --red-stop: #E53935;
+            --green-start: #43A047;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 10px;
+            text-align: center;
+            position: relative;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* Layout Kartu / Panel yang Clean */
+        .panel {
+            background-color: var(--bg-panel);
+            padding: 10px 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            margin-bottom: 10px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #2A2A2A;
+        }
+        
+        .row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        /* Styling Tombol Standar */
+        .btn-toggle {
+            padding: 10px 10px;
+            font-size: 13px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 130px;
+            transition: all 0.2s ease-in-out;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-green { background-color: var(--green-start); color: #fff; }
+        .btn-green:hover { background-color: #2E7D32; transform: translateY(-1px); }
+
+        .btn-red { background-color: var(--red-stop); color: #fff; }
+        .btn-red:hover { background-color: #C62828; transform: translateY(-1px); }
+
+        /* Styling Lampu Indikator & Teks */
+        .lampu-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .lampu {
+            width: 12px; height: 12px;
+            background-color: #444;
+            border-radius: 50%;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+            transition: 0.3s;
+        }
+        .lampu.nyala {
+            background-color: var(--green-start);
+            box-shadow: 0 0 12px var(--green-start);
+        }
+
+        /* Tombol Spesial */
+        #btnStopAll {
+            background-color: var(--red-stop);
+            color: white;
+            font-weight: bold;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            width: 100%;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.2s;
+            letter-spacing: 1px;
+        }
+        #btnStopAll:hover { background-color: #B71C1C; }
+
+        .btn-outline {
+            background-color: transparent;
+            color: var(--accent-orange);
+            border: 1px solid var(--accent-orange);
+            padding: 10px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .btn-outline:hover {
+            background-color: var(--accent-orange);
+            color: #121212;
+        }
+
+        /* Terminal Log Ala Hacker */
+        #statusBox {
+            margin-top: 10px;
+            padding: 12px;
+            background: #0A0A0A;
+            color: var(--accent-orange);
+            text-align: left;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid #333;
+            line-height: 1.5;
+        }
+        
+        /* Modifikasi Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-orange); }
+
+        /* Footer Links */
+        .footer-links {
+            margin-top: 10px;
+            padding-top: 15px;
+            border-top: 1px dashed #333;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .footer-links span {
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .footer-links span:hover {
+            color: var(--accent-orange);
+            text-decoration: underline;
+        }
+
+        /* Pop-up Modal */
+        #infoModal {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            align-items: center; justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(3px);
+        }
+        .modal-content {
+            background: var(--bg-panel);
+            padding: 10px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 320px;
+            text-align: left;
+            border: 1px solid var(--accent-orange);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+        }
+        .modal-content h3 {
+            color: var(--accent-orange);
+            margin-top: 0;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .modal-body {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-main);
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Modal Pop-up (Tersembunyi secara default) -->
+    <div id="infoModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Judul</h3>
+            <div id="modalBody" class="modal-body">Isi konten...</div>
+            <button id="btnCloseModal" class="btn-outline">Tutup</button>
+        </div>
+    </div>
+
+    <!-- Header (Title & Version) -->
+    <h2><img src="icon.png" alt="Logo" style="width: 28px; object-fit: contain;"> NgAppIDServ</h2>
+    <div style="padding: 0px 10px;margin:-15px 0 15px 0;font-size:12px;">v1.0.1</div>
+    
+    <!-- === BUNGKUSAN UTAMA 2 KOLOM === -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; text-align: left;">
+        
+        <!-- ======================= -->
+        <!-- KOLOM KIRI (Server Core)-->
+        <!-- ======================= -->
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            
+            
+            <!-- Panel Layanan Utama -->
+            <div class="panel" style="margin-bottom: 0;">
+                <div class="row">
+                    <div style="display: flex; gap: 8px;">
+                        <button id="btnTogglePHP" class="btn-toggle btn-green">Start PHP</button>
+                        <input type="number" id="portWeb" value="80" title="Port Nginx" style="width: 55px; background: #0A0A0A; border: 1px solid #333; color: var(--accent-orange); border-radius: 4px; text-align: center; font-family: 'Consolas', monospace; font-size: 12px; outline: none;">
+                    </div>
+                    <div class="lampu-container">Nginx & PHP <span id="lampuWeb" class="lampu"></span></div>
+                </div>
+                <div class="row">
+                    <div style="display: flex; gap: 8px;">
+                        <button id="btnToggleDB" class="btn-toggle btn-green">Start MySQL</button>
+                        <input type="number" id="portDB" value="3307" title="Port MySQL" style="width: 55px; background: #0A0A0A; border: 1px solid #333; color: var(--accent-orange); border-radius: 4px; text-align: center; font-family: 'Consolas', monospace; font-size: 12px; outline: none;">
+                    </div>
+                    <div class="lampu-container">MySQL Server <span id="lampuDB" class="lampu"></span></div>
+                </div>
+                <div class="row">
+                    <button id="btnToggleRedis" class="btn-toggle btn-green">Start Redis</button>
+                    <div class="lampu-container">Redis Cache <span id="lampuRedis" class="lampu"></span></div>
+                </div>
+                <div class="row">
+                    <button id="btnToggleMail" class="btn-toggle btn-green">Start Mail</button>
+                    <div class="lampu-container">Mail Catcher <span id="lampuMail" class="lampu"></span></div>
+                </div>
+            <!-- Panel Layanan Publik (Ngrok) -->
+			
+            <!-- Panel Layanan Publik (Ngrok) -->
+            <div class="row" style="border-bottom: none; padding-bottom: 0;">
+                <div style="display: flex; gap: 8px;">
+                    <button id="btnToggleNgrok" class="btn-toggle btn-green">Start Ngrok</button>
+                    <!-- Tambahan kolom input domain untuk Ngrok -->
+                    <input type="text" id="ngrokDomain" value="localhost.test" title="Domain Project yang mau di-Online-kan" style="width: 85px; background: #0A0A0A; border: 1px solid #333; color: var(--accent-orange); border-radius: 4px; text-align: center; font-family: 'Consolas', monospace; font-size: 11px; outline: none;">
+                </div>
+                <div class="lampu-container">Live Tunnel <span id="lampuNgrok" class="lampu"></span></div>
+            </div>
+            
+            <div id="ngrokResult" style="margin-top: 15px; display: none;">
+                <button id="btnNgrokLink" class="btn-outline" style="background-color: var(--accent-orange); color: #121212;">🔗 BUKA LINK NGROK</button>
+            </div>
+			
+            </div>
+        </div>
+
+        <!-- ======================= -->
+        <!-- KOLOM KANAN (Tools & Log)-->
+        <!-- ======================= -->
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            
+            <!-- Panel Kontrol Master -->
+            <div class="panel" style="padding: 10px 10px; margin-bottom: 0;">
+                <button id="btnStopAll">🛑 Matikan Semua</button>
+            </div>
+            <!-- Tombol Navigasi Ekstra (Grid 3 Kolom) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <!-- Tombol Project -->
+                <button id="btnOpenProject" class="btn-outline" style="border-color: var(--green-start); color: var(--green-start); padding: 12px 5px; font-size: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+                    <span style="font-size: 18px;">📂</span><b>Web Project</b>
+                </button>
+                
+                <!-- Tombol Backup DB -->
+                <button id="btnBackupDB" class="btn-outline" style="border-color: var(--yellow-start); color: var(--yellow-start); padding: 12px 5px; font-size: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+                    <span style="font-size: 18px;">💾</span><b>Backup DB</b>
+                </button>
+                
+                <!-- Tombol phpMyAdmin -->
+                <button id="btnOpenPMA" class="btn-outline" style="border-color: var(--accent-orange); color: var(--accent-orange); padding: 12px 5px; font-size: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+                    <span style="font-size: 18px;">🗄️</span><b>PHPMyadmin</b>
+                </button>
+                
+                <!-- Tombol Rebuild SSL -->
+                <button id="btnRebuildSSL" class="btn-outline" style="border-color: #00BCD4; color: #00BCD4; padding: 12px 5px; font-size: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+                    <span style="font-size: 18px;">🔐</span><b>Rebuild SSL</b>
+                </button>
+
+                <!-- Tombol Installer Baru -->
+                <button id="btnInstaller" class="btn-outline" style="border-color: #E91E63; color: #E91E63; padding: 12px 5px; font-size: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+                    <span style="font-size: 18px;">📦</span><b>Installer</b>
+                </button>
+
+                <!-- 👇 TOMBOL BARU: Info Versi 👇 -->
+                <button id="btnVersions" class="btn-outline" style="border-color: #9C27B0; color: #9C27B0; padding: 12px 5px; font-size: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+                    <span style="font-size: 18px;">ℹ️</span><b>Versi App</b>
+                </button>
+            </div>
+            
+            <!-- Terminal Log (Dibuat auto-scroll ke bawah) -->
+            <div id="statusBox" style="margin-top: 0; flex-grow: 1; min-height: 100px; max-height: 100px; overflow-y: auto;">☕ Menunggu perintah...</div>
+        </div>
+        
+    </div>
+    <!-- === AKHIR BUNGKUSAN 2 KOLOM === -->
+
+    <!-- Footer Links dengan Tambahan Lisensi Pro -->
+    <div class="footer-links" style="display: flex; align-items: center; position: relative;">
+        <!-- Area Menu (Dibuat rata tengah) -->
+        <div style="position: absolute; left: 10px; gap: 20px;">
+            <span id="btnLisensi" style="margin-right:10px;">👑 Donasi</span>
+            <span id="btnAbout" style="margin-right:10px;">💡 About</span>
+            <span id="btnReadme" style="margin-right:10px;">📖 Readme</span>
+            <span id="btnWebsite">🌐 NgAppID.com</span>
+        </div>
+        
+        <!-- Area Tahun (Didorong ke paling kanan) -->
+        <div style="position: absolute; right: 10px; color: #555; font-size: 11px; font-weight: normal; cursor: default;">
+            &copy; 2026
+        </div>
+    </div>
+
+    <script>
+        // --- LOGIKA MODAL & FOOTER LINKS ---
+        const modal = document.getElementById('infoModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+
+        // --- BUKA JENDELA LISENSI LANGSUNG DI MODAL ---
+        document.getElementById('btnLisensi').addEventListener('click', async () => {
+            const hwid = await window.serverAPI.getHWID();
+            
+            modalTitle.innerText = '👑 Donasi';
+            
+            modalBody.innerHTML = `
+                <div style="margin-bottom:12px; font-size:12px; color:var(--text-muted);">
+                    Fitur ini terkunci, diperbolehkan untuk Donasi. Kirimkan HWID di bawah ini ke <b>@Yedincoder</b> untuk mendapatkan License Key.
+                </div>
+                
+                <label style="font-size: 11px; font-weight: bold; color: var(--text-main);">Hardware ID (HWID):</label>
+                <input type="text" id="hwidField" value="${hwid}" readonly style="width: 100%; padding: 8px; margin-bottom: 12px; background: #0A0A0A; border: 1px solid #333; color: var(--accent-orange); border-radius: 4px; font-family: monospace; font-size:11px; box-sizing: border-box;">
+                
+                <label style="font-size: 11px; font-weight: bold; color: var(--text-main);">Masukkan License Key:</label>
+                <input type="text" id="licenseField" placeholder="Ketik kode lisensi di sini..." style="width: 100%; padding: 8px; background: #0A0A0A; border: 1px solid #333; color: var(--accent-orange); border-radius: 4px; font-family: monospace; font-size:11px; box-sizing: border-box;">
+                
+                <button id="btnAktivasiModal" style="margin-top: 15px; width: 100%; background-color: var(--accent-orange); color: #121212; border:none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">AKTIVASI SEKARANG</button>
+                <div id="statusMsg" style="margin-top: 10px; font-size: 12px; font-weight: bold; text-align: center;"></div>
+            `;
+            
+            modal.style.display = 'flex';
+
+            document.getElementById('btnAktivasiModal').addEventListener('click', () => {
+                const license = document.getElementById('licenseField').value;
+                const hwidVal = document.getElementById('hwidField').value;
+                
+                if(!license) {
+                    document.getElementById('statusMsg').innerText = "❌ Lisensi tidak boleh kosong!";
+                    document.getElementById('statusMsg').style.color = "#E53935";
+                    return;
+                }
+
+                document.getElementById('statusMsg').innerText = "⏳ Memvalidasi ke server...";
+                document.getElementById('statusMsg').style.color = "var(--text-muted)";
+                
+                window.serverAPI.submitLicense({ hwid: hwidVal, license });
+            });
+        });
+
+        // --- MENERIMA BALASAN AKTIVASI DARI BACKEND ---
+        window.serverAPI.onLicenseResult((event, result) => {
+            const msgBox = document.getElementById('statusMsg');
+            if(msgBox) {
+                if(result.success) {
+                    msgBox.style.color = "#43A047"; 
+                    msgBox.innerText = "✅ " + result.message;
+                    
+                    setTimeout(() => { 
+                        modal.style.display = 'none'; 
+                    }, 2000);
+                } else {
+                    msgBox.style.color = "#E53935"; 
+                    msgBox.innerText = "❌ " + result.message;
+                }
+            }
+        });
+// --- LOGIKA TOMBOL INFO VERSI ---
+document.getElementById('btnVersions').addEventListener('click', () => {
+    modalTitle.innerText = 'ℹ️ Informasi Versi Tech Stack';
+    
+    // Bikin tabel rapi biar enak dibaca
+    modalBody.innerHTML = `
+        <div style="font-size: 12px; color: var(--text-main); line-height: 2;">
+            <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #333; color: var(--text-muted);">
+                    <th style="padding-bottom: 5px;">Komponen</th>
+                    <th style="padding-bottom: 5px;">Versi Terinstal</th>
+                </tr>
+                <tr style="border-bottom: 1px dashed #222;">
+                    <td style="padding: 5px 0; color: var(--green-start);"><b>Nginx</b></td>
+                    <td style="padding: 5px 0;">v1.30.4</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed #222;">
+                    <td style="padding: 5px 0; color: var(--accent-orange);"><b>PHP</b></td>
+                    <td style="padding: 5px 0;">v8.3.32 (NTS)</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed #222;">
+                    <td style="padding: 5px 0; color: #00BCD4;"><b>MySQL</b></td>
+                    <td style="padding: 5px 0;">v8.4.10</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed #222;">
+                    <td style="padding: 5px 0; color: #F44336;"><b>Redis Cache</b></td>
+                    <td style="padding: 5px 0;">v5.0.14.1</td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0; color: #E91E63;"><b>phpMyAdmin</b></td>
+                    <td style="padding: 5px 0;">v5.2.3</td>
+                </tr>
+            </table>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+});
+
+// --- LOGIKA TOMBOL INFO VERSI (DINAMIS) ---
+document.getElementById('btnVersions').addEventListener('click', async () => {
+    modalTitle.innerText = '⏳ Mengambil Data...';
+    modalBody.innerHTML = '<div style="text-align:center; padding: 20px;">Memindai versi engine lokal...</div>';
+    modal.style.display = 'flex';
+
+    // Panggil backend buat ngecek file .exe
+    const versions = await window.serverAPI.getVersions();
+    
+    modalTitle.innerText = 'ℹ️ Informasi Versi Tech Stack';
+    modalBody.innerHTML = `
+        <div style="font-size: 12px; color: var(--text-main); line-height: 2;">
+            <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #333; color: var(--text-muted);">
+                    <th style="padding-bottom: 5px;">Komponen</th>
+                    <th style="padding-bottom: 5px;">Versi Terinstal</th>
+                </tr>
+                <tr style="border-bottom: 1px dashed #222;">
+                    <td style="padding: 5px 0; color: var(--green-start);"><b>Nginx</b></td>
+                    <td style="padding: 5px 0; font-family: monospace;">${versions.nginx}</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed #222;">
+                    <td style="padding: 5px 0; color: var(--accent-orange);"><b>PHP</b></td>
+                    <td style="padding: 5px 0; font-family: monospace;">${versions.php}</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed #222;">
+                    <td style="padding: 5px 0; color: #00BCD4;"><b>MySQL</b></td>
+                    <td style="padding: 5px 0; font-family: monospace;">${versions.mysql}</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed #222;">
+                    <td style="padding: 5px 0; color: #F44336;"><b>Redis Cache</b></td>
+                    <td style="padding: 5px 0; font-family: monospace;">v5.0.14.1 (Static)</td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0; color: #E91E63;"><b>phpMyAdmin</b></td>
+                    <td style="padding: 5px 0; font-family: monospace;">v5.2.3 (Static)</td>
+                </tr>
+            </table>
+            <div style="margin-top: 10px; font-size: 10px; color: #666; text-align: center;">
+                *Versi terdeteksi secara live dari file eksekusi sistem.
+            </div>
+        </div>
+    `;
+});
+
+        // --- LOGIKA TOMBOL REBUILD SSL ---
+        document.getElementById('btnRebuildSSL').addEventListener('click', () => {
+            modalTitle.innerText = '🔐 Konfirmasi Rebuild SSL';
+            
+            modalBody.innerHTML = `
+                <div style="margin-bottom: 20px; font-size: 13px; color: var(--text-main); line-height: 1.5;">
+                    Apakah kamu yakin ingin me-rebuild ulang sertifikat SSL untuk seluruh project kamu?<br><br>
+                    <div style="background: #2a1111; padding: 10px; border-radius: 6px; border-left: 3px solid var(--red-stop); margin-top: 10px;">
+                        <b style="color: var(--red-stop);">⚠️ PERHATIAN PENTING:</b><br>
+                        Pastikan kamu sudah <b>MEMATIKAN (Stop)</b> server Nginx & PHP terlebih dahulu agar file sertifikat tidak terkunci oleh sistem Windows.
+                    </div>
+                </div>
+                <button id="btnProsesSSL" style="width: 100%; background-color: #00BCD4; color: #121212; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s;">🚀 YA, REBUILD SEKARANG</button>
+            `;
+            
+            modal.style.display = 'flex';
+
+            document.getElementById('btnProsesSSL').addEventListener('click', () => {
+                modal.style.display = 'none'; 
+                window.serverAPI.rebuildSSL(); 
+            });
+        });
+        
+        document.getElementById('btnAbout').addEventListener('click', () => {
+            modalTitle.innerText = '💡 About NgAppIDServ';
+            modalBody.innerHTML = `
+                <b>NgAppIDServ v1.0.1</b><br><br>
+                Aplikasi NgAppIDServ - Web Server Lokal modern berbasis Electron, Nginx, PHP-CGI, dan MySQL.<br><br>
+                Dirancang khusus untuk <i>developer</i> yang membutuhkan lingkungan lokal super cepat, auto-virtual host, dan integrasi Ngrok tanpa ribet konfigurasi manual.<br><br>
+                <div style="background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 3px solid var(--accent-orange); margin-top: 10px;">
+                    <b>Dibuat & Dikembangkan oleh:</b><br>
+                    👨‍💻 Author: @Yedincoder (NgAppID Teams)<br>
+                    📧 Email: yedincoder@gmail.com<br>
+                    📱 WA: 081802161315<br><br>
+                    <i style="color: var(--accent-orange);">"Boleh Donasi Bro... buat Ngopi"</i> ☕
+                </div>
+            `;
+            modal.style.display = 'flex';
+        });
+
+       document.getElementById('btnReadme').addEventListener('click', () => {
+            modalTitle.innerText = '📖 Readme & Fitur';
+            
+            // Trik: Perlebar modal khusus untuk halaman ini agar 2 kolom muat
+            document.querySelector('.modal-content').style.maxWidth = '600px';
+
+            modalBody.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                    
+                    <!-- ======================= -->
+                    <!-- KOLOM KIRI (Tech Stack) -->
+                    <!-- ======================= -->
+                    <div>
+                        <div style="margin-bottom: 12px;">
+                            <b style="color: var(--accent-orange);">📦 Paket Terintegrasi:</b>
+                            <ul style="padding-left: 15px; margin: 5px 0 0 0; font-size: 12px; line-height: 1.6; color: #ccc;">
+                                <li>Nginx <b>v1.30.4</b></li>
+                                <li>PHP <b>v8.3.32</b> (NTS Win32 x64)</li>
+                                <li>MySQL <b>v8.4.10</b> (Win x64)</li>
+                                <li>phpMyAdmin <b>v5.2.3</b> (All)</li>
+                                <li>Redis Cache <b>v5.0.14.1</b> (x64)</li>
+                                <li>Mailpit <i>(Mail Catcher)</i></li>
+                                <li>Ngrok <i>(Live Public Tunnel)</i></li>
+                                <li>mkcert <i>(Auto SSL HTTPS)</i></li>
+                                <li>Electron & Node.js</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- ============================== -->
+                    <!-- KOLOM KANAN (Pro & Panduan)    -->
+                    <!-- ============================== -->
+                    <div>
+                        <div style="margin-bottom: 15px;">
+                            <b style="color: var(--accent-orange);">📂 Fitur Dibatasi (PRO):</b>
+                            <ul style="padding-left: 15px; margin: 5px 0 0 0; font-size: 12px; line-height: 1.6; color: #ccc;">
+                                <li><b>STOP ALL</b> & <b>Rebuild SSL</b></li>
+                                <li><b>Redis</b> & <b>Mail Catcher</b></li>
+                                <li><b>Ngrok</b> & <b>Auto Installer</b></li>
+                            </ul>
+                        </div>
+                        
+                        <div style="border-top: 1px dashed #444; padding-top: 12px;">
+                            <b style="color: var(--accent-orange);">🚀 Panduan Singkat:</b>
+                            <ul style="padding-left: 15px; margin: 5px 0 0 0; font-size: 11px; line-height: 1.5; color: #aaa;">
+                                <li style="margin-bottom: 6px;"><b>Auto VHost:</b> Folder di <code>www/toko</code> otomatis menjadi <code>toko.test</code> lengkap dengan SSL (HTTPS).</li>
+                                <li style="margin-bottom: 6px;"><b>Database:</b> User <code>root</code> tanpa password. Port sesuai yang diketik di UI.</li>
+                                <li><b>Penting:</b> Pastikan Port Nginx/MySQL tidak bentrok dengan aplikasi lain (Skype, XAMPP).</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            `;
+            modal.style.display = 'flex';
+        });
+        
+       // --- LOGIKA TOMBOL PROJECT ---
+document.getElementById('btnOpenProject').addEventListener('click', async () => {
+    const projects = await window.serverAPI.getProjects();
+    modalTitle.innerText = '📂 Daftar Project Lokal';
+    
+    let htmlList = '<div style="display:flex; flex-direction:column; gap:8px; max-height: 300px; overflow-y: auto; padding-right: 5px;">';
+    
+    // Baris Localhost (Diubah jadi flex biar tombol foldernya sejajar)
+    htmlList += `
+    <div style="display: flex; gap: 5px;">
+        <button class="btn-outline" style="text-transform:none; text-align:left; color: var(--accent-orange); border-color: var(--accent-orange); flex-grow: 1;" onclick="window.serverAPI.openExternal('https://localhost.test')">🏠 localhost.test</button>
+        <button class="btn-outline" style="width: 40px; padding: 0; border-color: #00BCD4; color: #00BCD4; flex-shrink: 0;" title="Buka Folder Utama (www)" onclick="window.serverAPI.openFolder('')">📁</button>
+    </div>`;
+    
+    if (projects.length === 0) {
+        htmlList += '<div style="text-align:center; color: var(--text-muted); margin-top: 15px;">Belum ada folder project di dalam folder <b>www</b>.</div>';
+    } else {
+        projects.forEach(p => {
+            // Tombol project dipecah jadi 3 bagian (Kiri: Buka Web, Tengah: Buka Folder, Kanan: Hapus)
+            htmlList += `
+            <div style="display: flex; gap: 5px;">
+                <button class="btn-outline" style="text-transform:none; text-align:left; color: #fff; border-color: #444; flex-grow: 1;" onclick="window.serverAPI.openExternal('https://${p}.test')">🌐 ${p}.test</button>
+                
+                <button class="btn-outline" style="width: 40px; padding: 0; border-color: #4CAF50; color: #4CAF50; flex-shrink: 0;" title="Buka Folder ${p}" onclick="window.serverAPI.openFolder('${p}')">📁</button>
+                
+                <button class="btn-outline" style="width: 40px; padding: 0; border-color: var(--red-stop); color: var(--red-stop); flex-shrink: 0;" title="Hapus Project ${p}" onclick="konfirmasiHapus('${p}')">🗑️</button>
+            </div>`;
+        });
+    }
+    
+    htmlList += '</div>';
+    modalBody.innerHTML = htmlList;
+    
+    modal.style.display = 'flex';
+});
+
+        // --- FUNGSI MODAL KONFIRMASI HAPUS (Tanpa Alert Kaku) ---
+        window.konfirmasiHapus = function(namaProject) {
+            modalTitle.innerText = '🗑️ Konfirmasi Hapus Project';
+            modalBody.innerHTML = `
+                <div style="margin-bottom: 20px; font-size: 13px; color: var(--text-main); line-height: 1.5;">
+                    Apakah kamu yakin ingin menghapus project <b>${namaProject}</b>?<br><br>
+                    <div style="background: #2a1111; padding: 10px; border-radius: 6px; border-left: 3px solid var(--red-stop); margin-top: 10px;">
+                        <b style="color: var(--red-stop);">⚠️ PERINGATAN PERMANEN:</b><br>
+                        Seluruh file di dalam folder <code>www/${namaProject}</code> akan <b>HANGUS</b> dan tidak bisa dikembalikan!
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="btnBatalHapus" class="btn-outline" style="width: 50%; border-color: #888; color: #888;">Batal</button>
+                    <button id="btnEksekusiHapus" style="width: 50%; background-color: var(--red-stop); color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">🗑️ YA, HAPUS!</button>
+                </div>
+            `;
+            
+            // Kalau batal, buka lagi list projectnya
+            document.getElementById('btnBatalHapus').addEventListener('click', () => {
+                document.getElementById('btnOpenProject').click(); 
+            });
+
+            // Eksekusi kirim perintah ke backend
+            document.getElementById('btnEksekusiHapus').addEventListener('click', () => {
+                modal.style.display = 'none'; 
+                window.serverAPI.deleteProject(namaProject); 
+            });
+        };
+
+        document.getElementById('btnCloseModal').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // Buka link website ngappid.com di browser utama
+        document.getElementById('btnWebsite').addEventListener('click', () => {
+            window.serverAPI.openExternal('https://ngappid.com');
+        });
+
+        // --- LOGIKA SERVER UTAMA ---
+        let state = { web: false, db: false, redis: false, mail: false, ngrok: false };
+
+        document.getElementById('btnTogglePHP').addEventListener('click', () => { 
+            const port = document.getElementById('portWeb').value || 80;
+            state.web ? window.serverAPI.stop() : window.serverAPI.start(port); 
+        });
+        
+        document.getElementById('btnToggleDB').addEventListener('click', () => { 
+            const port = document.getElementById('portDB').value || 3307;
+            state.db ? window.serverAPI.stopDB() : window.serverAPI.startDB(port); 
+        });
+		// --- EKSEKUSI TOMBOL BACKUP ---
+		document.getElementById('btnBackupDB').addEventListener('click', () => {
+			// Ambil port yang diketik user (default 3307) biar dump-nya presisi
+			const port = document.getElementById('portDB').value || 3307;
+			window.serverAPI.backupDB(port);
+		});
+        document.getElementById('btnToggleRedis').addEventListener('click', () => { state.redis ? window.serverAPI.stopRedis() : window.serverAPI.startRedis(); });
+        document.getElementById('btnToggleMail').addEventListener('click', () => { state.mail ? window.serverAPI.stopMail() : window.serverAPI.startMail(); });
+        // Ubah baris btnToggleNgrok menjadi seperti ini:
+        document.getElementById('btnToggleNgrok').addEventListener('click', () => { 
+            const domain = document.getElementById('ngrokDomain').value || 'localhost';
+            const port = document.getElementById('portWeb').value || 80;
+            state.ngrok ? window.serverAPI.stopNgrok() : window.serverAPI.startNgrok({ domain, port }); 
+        });
+        
+        document.getElementById('btnStopAll').addEventListener('click', () => { window.serverAPI.stopAll(); });
+        document.getElementById('btnOpenPMA').addEventListener('click', () => window.serverAPI.openPMA());
+
+        function ubahTombol(idTombol, isRunning, namaLayanan) {
+            const btn = document.getElementById(idTombol);
+            if (isRunning) {
+                btn.textContent = 'Stop ' + namaLayanan;
+                btn.className = 'btn-toggle btn-red';
+            } else {
+                btn.textContent = 'Start ' + namaLayanan;
+                btn.className = 'btn-toggle btn-green';
+            }
+        }
+
+        window.serverAPI.onStatus((event, data) => {
+            const lampu = document.getElementById(data.id);
+            const isRunning = (data.status === 'on');
+
+            if (lampu) {
+                isRunning ? lampu.classList.add('nyala') : lampu.classList.remove('nyala');
+
+                if (data.id === 'lampuWeb') { state.web = isRunning; ubahTombol('btnTogglePHP', isRunning, 'PHP'); } 
+                else if (data.id === 'lampuDB') { state.db = isRunning; ubahTombol('btnToggleDB', isRunning, 'MySQL'); } 
+                else if (data.id === 'lampuRedis') { state.redis = isRunning; ubahTombol('btnToggleRedis', isRunning, 'Redis'); } 
+                else if (data.id === 'lampuMail') { state.mail = isRunning; ubahTombol('btnToggleMail', isRunning, 'Mail'); } 
+                else if (data.id === 'lampuNgrok') { 
+                    state.ngrok = isRunning; 
+                    const btn = document.getElementById('btnToggleNgrok');
+                    isRunning ? (btn.textContent = 'Stop Ngrok', btn.className = 'btn-toggle btn-red') 
+                              : (btn.textContent = 'Start Ngrok', btn.className = 'btn-toggle btn-green');
+                }
+            }
+        });
+
+        window.serverAPI.onLog((event, message) => {
+            const box = document.getElementById('statusBox');
+            box.innerHTML += `<br>><span style="color:#aaa;"> ${message}</span>`;
+            box.scrollTop = box.scrollHeight;
+        });
+
+        window.serverAPI.onNgrokUrl((event, url) => {
+            const container = document.getElementById('ngrokResult');
+            const btnLink = document.getElementById('btnNgrokLink');
+            
+            if (url) {
+                container.style.display = 'block';
+                btnLink.onclick = () => window.serverAPI.openExternal(url); 
+            } else {
+                container.style.display = 'none';
+            }
+        });
+        
+       // --- LOGIKA TOMBOL AUTO INSTALLER ---
+        document.getElementById('btnInstaller').addEventListener('click', () => {
+            modalTitle.innerText = '📦 Auto Installer App';
+            
+            modalBody.innerHTML = `
+                <div style="margin-bottom: 15px; font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+                    Pilih platform yang ingin diunduh dan diinstal otomatis ke dalam folder <b>www</b> Anda:
+                </div>
+                
+                <b style="color: var(--accent-orange); font-size: 12px;">🔥 PHP Frameworks</b>
+                <div style="display:flex; gap:8px; margin: 8px 0 15px 0;">
+                    <button class="btn-outline btn-install-app" data-app="laravel" style="width: 50%; border-color: #F44336; color: #F44336; font-size: 11px;">Laravel 11</button>
+                    <button class="btn-outline btn-install-app" data-app="ci4" style="width: 50%; border-color: #E65100; color: #E65100; font-size: 11px;">CodeIgniter 4</button>
+                </div>
+
+                <b style="color: var(--accent-orange); font-size: 12px;">🌍 Content Management System (CMS)</b>
+                <div style="display:flex; gap:8px; margin: 8px 0;">
+                    <button class="btn-outline btn-install-app" data-app="wordpress" style="width: 50%; border-color: #2196F3; color: #2196F3; font-size: 11px;">WordPress</button>
+                    <button class="btn-outline btn-install-app" data-app="joomla" style="width: 50%; border-color: #4CAF50; color: #4CAF50; font-size: 11px;">Joomla!</button>
+                </div>
+            `;
+            
+            modal.style.display = 'flex';
+
+            // Logika ketika salah satu tombol App (misal WordPress) diklik
+            document.querySelectorAll('.btn-install-app').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const appName = e.target.getAttribute('data-app');
+                    
+                    // Ubah isi Modal menjadi Form Input Nama Project
+                    modalTitle.innerText = `⚙️ Setup Project ${appName.toUpperCase()}`;
+                    modalBody.innerHTML = `
+                        <div style="margin-bottom: 15px; font-size: 13px; color: var(--text-main);">
+                            Masukkan nama folder untuk project <b>${appName.toUpperCase()}</b> kamu.<br>
+                            <i style="font-size: 11px; color: var(--text-muted);">(Nama ini akan otomatis menjadi domain, misal: tokoku.test)</i>
+                        </div>
+                        
+                        <input type="text" id="inputProjectName" placeholder="Contoh: tokoku" style="width: 100%; padding: 10px; background: #0A0A0A; border: 1px solid #333; color: var(--accent-orange); border-radius: 4px; font-family: monospace; box-sizing: border-box; margin-bottom: 15px; outline: none;">
+                        
+                        <button id="btnEksekusiInstall" style="width: 100%; background-color: var(--green-start); color: white; border: none; padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s;">🚀 INSTALL SEKARANG</button>
+                    `;
+
+                    // Eksekusi ketika tombol Install Sekarang diklik
+                    document.getElementById('btnEksekusiInstall').addEventListener('click', () => {
+                        let projectName = document.getElementById('inputProjectName').value.trim();
+                        // Bersihkan spasi dan karakter aneh biar aman buat nama folder
+                        projectName = projectName.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+                        
+                        if (!projectName) {
+                            document.getElementById('inputProjectName').style.borderColor = "red";
+                            return;
+                        }
+                        
+                        modal.style.display = 'none'; // Tutup modal
+                        
+                        // Kirim Data App dan Nama Project ke Backend
+                        window.serverAPI.installApp({ appName, projectName }); 
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>

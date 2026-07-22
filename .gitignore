@@ -1,0 +1,50 @@
+# ==========================================
+# ?? IGNORE DEPENDENCIES & BUILD
+# ==========================================
+node_modules/
+dist/
+release/
+out/
+build/
+
+# ==========================================
+# ?? IGNORE USER DATA & PROJECTS
+# ==========================================
+# Abaikan semua folder project web buatan user
+www/*
+# (Opsional) Tetap pertahankan folder www itu sendiri, tapi isinya kosong
+!.gitkeep
+
+# Abaikan isi database dan log agar data user tidak ikut terupload
+data/*
+!.gitkeep
+
+# ==========================================
+# ?? IGNORE ENGINE BINARIES (PENTING)
+# ==========================================
+# Folder ini berisi Nginx, PHP, dan MySQL yang ukurannya bisa ratusan MB.
+# Biasanya engine ini TIDAK di-upload ke GitHub source code. 
+# User yang nge-clone repo lo nanti harus download engine-nya sendiri.
+bin/nginx/
+bin/php/
+bin/mysql/
+
+# ==========================================
+# ?? IGNORE LOGS & SECRETS
+# ==========================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# File environment (kalau lo pakai buat nyimpen API Key rahasia)
+.env
+.env.local
+.env.*.local
+
+# ==========================================
+# ?? IGNORE OS GENERATED FILES
+# ==========================================
+.DS_Store
+Thumbs.db
+desktop.ini
