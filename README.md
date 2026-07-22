@@ -55,11 +55,11 @@ Aplikasi ini sudah di- *bundle* secara mandiri (*Portable-like*) dengan teknolog
 
 ## 📂 Struktur Folder Penting
 
-Setelah diinstal (default di `C:\ngappidserv`), perhatikan struktur folder berikut:
+Setelah diinstal (default akan membuat folder `:\NgAppDIServ`), perhatikan struktur folder berikut:
 
-* `/www` : **Letakkan semua file project web / script PHP kamu di sini.**
-* `/data/mysql` : Lokasi penyimpanan *raw data* dari database MySQL/MariaDB.
-* `/bin` : Direktori *core engine* (Nginx, PHP, MySQL, Redis, dll). **Jangan diubah kecuali kamu tahu apa yang kamu lakukan.**
+* `/resources/www` : **Letakkan semua file project web / script PHP kamu di sini.**
+* `/resources/data/mysql` : Lokasi penyimpanan *raw data* dari database MySQL/MariaDB.
+* `/resources/bin` : Direktori *core engine* (Nginx, PHP, MySQL, Redis, dll). **Jangan diubah kecuali kamu tahu apa yang kamu lakukan.**
 
 ---
 
@@ -68,7 +68,7 @@ Setelah diinstal (default di `C:\ngappidserv`), perhatikan struktur folder berik
 1. **Jalankan sebagai Administrator (Wajib):**
    Klik kanan pada *shortcut* NgAppIDServ dan pilih **Run as Administrator**. Ini wajib agar aplikasi memiliki izin menulis konfigurasi domain `.test` ke dalam file *hosts* Windows & mengatur Firewall.
 2. **Menambahkan Project Baru:**
-   Buat folder baru di dalam folder `www`, misalnya folder `portofolio`. Domain `https://portofolio.test` otomatis bisa langsung diakses saat PHP & Nginx di- *start*.
+   Buat folder baru di dalam folder `www`, misalnya folder `portofolio`. Domain `https://portofolio.test` otomatis bisa langsung diakses saat PHP & Nginx di- *start*, Jika terjadi Error bisa di Rebuild SSL.
 3. **Akses Database:**
    Klik tombol **🗄️ Database / PHPMyAdmin** di dalam aplikasi.
    * **Port Database:** `3307` (Default, atau sesuai yang kamu tentukan di UI)
@@ -84,7 +84,7 @@ Setelah diinstal (default di `C:\ngappidserv`), perhatikan struktur folder berik
 Jika kamu ingin mengembangkan atau memodifikasi aplikasi ini:
 
 1. **Clone Repositori**
-git clone [https://github.com/Yedincoder/NgAppIDServ.git](https://github.com/Yedincoder/NgAppIDServ.git)
+git clone [https://github.com/yedincoder/NgAppIDServ.git](https://github.com/yedincoder/NgAppIDServ.git)
 
 2. **Masuk ke direktori**
 cd NgAppIDServ
