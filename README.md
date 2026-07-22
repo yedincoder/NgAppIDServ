@@ -7,6 +7,8 @@
 **NgAppIDServ** adalah aplikasi *Web Server* Lokal modern berbasis GUI (Graphical User Interface) yang dirancang khusus untuk memudahkan workflow *developer* web. Dibuat menggunakan **Electron** dan **Node.js**, aplikasi ini menawarkan pengalaman manajemen server lokal sekelas *Enterprise* dengan fitur andalan **Auto-Virtual Host**, **Auto-SSL (HTTPS)**, **Pre-Flight Port Checker**, dan **Integrasi Ngrok** secara instan.
 
 ---
+![Tampilan NgAppIDServ](screenshot.png)
+---
 
 ## 🚀 Fitur Utama
 
