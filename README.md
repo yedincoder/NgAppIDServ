@@ -1,4 +1,4 @@
-# ⚡ NgAppIDServ v1.0.1
+# ⚡ NgAppIDServ - WebServer Local Modern
 
 ![Electron](https://img.shields.io/badge/Electron-v28+-47848F?style=for-the-badge&logo=electron&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
