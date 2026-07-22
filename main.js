@@ -23,9 +23,11 @@ let isQuiting = false;
 const { machineIdSync } = require('node-machine-id');
 const { createClient } = require('@supabase/supabase-js');
 
-// Masukkan URL dan Anon Key dari dashboard Supabase kamu
-const supabaseUrl = 'https://lyhzefifpfkouvvzdvwr.supabase.co';
-const supabaseKey = 'sb_publishable_qh6G0sDdr9fjcLRjfZEjlQ_6-xT-Hk1';
+// Cara pakainya sekarang begini:
+require('dotenv').config();
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const net = require('net');
