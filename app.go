@@ -84,23 +84,34 @@ func (a *App) isPortInUse(port int) bool {
 
 func (a *App) OpenExternal(url string) { runtime.BrowserOpenURL(a.ctx, url) }
 func (a *App) OpenPMA()                { runtime.BrowserOpenURL(a.ctx, "http://localhost/phpmyadmin") }
-func (a *App) GetAppVersion() string { return "2.0.0" }
+func (a *App) GetAppVersion() string { return "2.0.1" }
 
-// ==== SETTING.INI ====
+// ==== SETTING.INI (v2.0.1 Upgraded: Dynamic Port & Single PHP Default) ====
 type Config struct {
-	PHP   string `json:"php"`
-	MySQL string `json:"mysql"`
+	PHP     string `json:"php"`
+	MySQL   string `json:"mysql"`
+	WebPort int    `json:"web_port"`
+	DBPort  int    `json:"db_port"`
 }
 
 func (a *App) readSettings() Config {
 	cwd := a.getAppDir()
 	settingPath := filepath.Join(cwd, "setting.ini")
-	config := Config{PHP: "php-8.3.32-nts-Win32-vs16-x64", MySQL: "mariadb"}
+	
+	// Default v2.0.1 config
+	config := Config{
+		PHP:     "php",
+		MySQL:   "mariadb",
+		WebPort: 80,
+		DBPort:  3307,
+	}
 
 	if _, err := os.Stat(settingPath); os.IsNotExist(err) {
-		os.WriteFile(settingPath, []byte("[DEFAULT_ENGINE]\r\nphp=php-8.3.32-nts-Win32-vs16-x64\r\nmysql=mariadb\r\n"), 0644)
+		defaultContent := "[DEFAULT_ENGINE]\r\nphp=php\r\nmysql=mariadb\r\nweb_port=80\r\ndb_port=3307\r\n"
+		os.WriteFile(settingPath, []byte(defaultContent), 0644)
 		return config
 	}
+
 	contentBytes, _ := os.ReadFile(settingPath)
 	content := string(contentBytes)
 
@@ -110,6 +121,16 @@ func (a *App) readSettings() Config {
 	if m := regexp.MustCompile(`(?m)^mysql\s*=\s*(.+)$`).FindStringSubmatch(content); len(m) > 1 {
 		config.MySQL = strings.TrimSpace(m[1])
 	}
+	if m := regexp.MustCompile(`(?m)^web_port\s*=\s*(\d+)$`).FindStringSubmatch(content); len(m) > 1 {
+		if p, err := strconv.Atoi(m[1]); err == nil {
+			config.WebPort = p
+		}
+	}
+	if m := regexp.MustCompile(`(?m)^db_port\s*=\s*(\d+)$`).FindStringSubmatch(content); len(m) > 1 {
+		if p, err := strconv.Atoi(m[1]); err == nil {
+			config.DBPort = p
+		}
+	}
 	return config
 }
 
@@ -117,20 +138,32 @@ func (a *App) SaveSettings(data map[string]string) map[string]any {
 	cwd := a.getAppDir()
 	settingPath := filepath.Join(cwd, "setting.ini")
 	current := a.readSettings()
+
 	if php, ok := data["php"]; ok && php != "" {
 		current.PHP = php
 	}
 	if mysql, ok := data["mysql"]; ok && mysql != "" {
 		current.MySQL = mysql
 	}
-	newIni := fmt.Sprintf("[DEFAULT_ENGINE]\r\nphp=%s\r\nmysql=%s\r\n", current.PHP, current.MySQL)
+	if wp, ok := data["web_port"]; ok && wp != "" {
+		if p, err := strconv.Atoi(wp); err == nil {
+			current.WebPort = p
+		}
+	}
+	if dp, ok := data["db_port"]; ok && dp != "" {
+		if p, err := strconv.Atoi(dp); err == nil {
+			current.DBPort = p
+		}
+	}
+
+	newIni := fmt.Sprintf("[DEFAULT_ENGINE]\r\nphp=%s\r\nmysql=%s\r\nweb_port=%d\r\ndb_port=%d\r\n", current.PHP, current.MySQL, current.WebPort, current.DBPort)
 	if err := os.WriteFile(settingPath, []byte(newIni), 0644); err != nil {
 		return map[string]any{"success": false, "message": "Gagal menyimpan"}
 	}
-	return map[string]any{"success": true, "message": "Engine berhasil diubah!"}
+	return map[string]any{"success": true, "message": "Konfigurasi berhasil diperbarui!"}
 }
 
-// ==== DETEKSI VERSI ====
+// ==== DETEKSI VERSI (v2.0.1 Single Engine Support) ====
 func (a *App) GetVersions() map[string]any {
 	cwd := a.getAppDir()
 	cfg := a.readSettings()
@@ -144,11 +177,13 @@ func (a *App) GetVersions() map[string]any {
 		}
 	}
 	
-	if entries, err := os.ReadDir(filepath.Join(cwd, "bin", "php")); err == nil {
+	// Deteksi folder tunggal / multi PHP di bin/php
+	phpDir := filepath.Join(cwd, "bin", "php")
+	if entries, err := os.ReadDir(phpDir); err == nil {
 		var phpList []map[string]any
 		for _, e := range entries {
 			if e.IsDir() {
-				exe := filepath.Join(cwd, "bin", "php", e.Name(), "php.exe")
+				exe := filepath.Join(phpDir, e.Name(), "php.exe")
 				cmdPhp := exec.Command(exe, "-v")
 				cmdPhp.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 				if out, err := cmdPhp.Output(); err == nil {
@@ -158,14 +193,26 @@ func (a *App) GetVersions() map[string]any {
 				}
 			}
 		}
+		// Fallback jika direktori utama bin/php itu sendiri adalah engine PHP (single layout)
+		if len(phpList) == 0 {
+			exe := filepath.Join(phpDir, "php.exe")
+			cmdPhp := exec.Command(exe, "-v")
+			cmdPhp.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+			if out, err := cmdPhp.Output(); err == nil {
+				if m := regexp.MustCompile(`PHP ([\d.]+)`).FindStringSubmatch(string(out)); len(m) > 1 {
+					phpList = append(phpList, map[string]any{"folder": "php", "versi": m[1], "isDefault": true})
+				}
+			}
+		}
 		versions["php"] = phpList
 	}
 	
-	if entries, err := os.ReadDir(filepath.Join(cwd, "bin", "mysql")); err == nil {
+	mysqlBasePath := filepath.Join(cwd, "bin", "mysql")
+	if entries, err := os.ReadDir(mysqlBasePath); err == nil {
 		var dbList []map[string]any
 		for _, e := range entries {
 			if e.IsDir() {
-				exe := filepath.Join(cwd, "bin", "mysql", e.Name(), "bin", "mysqld.exe")
+				exe := filepath.Join(mysqlBasePath, e.Name(), "bin", "mysqld.exe")
 				cmdDb := exec.Command(exe, "-V")
 				cmdDb.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 				if out, err := cmdDb.Output(); err == nil {
@@ -282,6 +329,11 @@ func (a *App) Start(port int) {
 		a.emitLog("Server sudah berjalan!")
 		return
 	}
+
+	cfg := a.readSettings()
+	if port == 0 {
+		port = cfg.WebPort
+	}
 	if port == 0 {
 		port = 80
 	}
@@ -330,7 +382,6 @@ func (a *App) Start(port int) {
 	a.generateVirtualHosts(port)
 	a.emitLog(fmt.Sprintf("🌐 Auto Virtual Host diperbarui (Port: %d)!", port))
 
-	cfg := a.readSettings()
 	a.emitLog(fmt.Sprintf("🐘 Menggunakan Engine PHP: [%s]", cfg.PHP))
 
 	phpExe := filepath.Join(cwd, "bin", "php", cfg.PHP, "php-cgi.exe")
@@ -338,7 +389,7 @@ func (a *App) Start(port int) {
 		phpExe = filepath.Join(cwd, "bin", "php", "php-cgi.exe") 
 	}
 
-	// 2. AUTO-FIX PHP.INI SESUAI VERSI YANG DIPILIH
+	// 2. AUTO-FIX PHP.INI
 	phpDir := filepath.Dir(phpExe)
 	phpIniPath := filepath.Join(phpDir, "php.ini")
 	
@@ -455,9 +506,15 @@ func (a *App) StartDB(port int) {
 		a.emitLog("MySQL sudah berjalan!")
 		return
 	}
+
+	cfg := a.readSettings()
+	if port == 0 {
+		port = cfg.DBPort
+	}
 	if port == 0 {
 		port = 3307
 	}
+
 	if a.isPortInUse(port) {
 		a.emitLog(fmt.Sprintf("❌ GAGAL: Port %d sudah digunakan.", port))
 		a.emitStatus("lampuDB", "off")
@@ -465,7 +522,6 @@ func (a *App) StartDB(port int) {
 	}
 
 	cwd := a.getAppDir()
-	cfg := a.readSettings()
 	dataDir := filepath.Join(cwd, "data", "mysql")
 	os.MkdirAll(dataDir, 0755)
 
@@ -499,7 +555,6 @@ func (a *App) StartDB(port int) {
 			a.emitLog("✅ Sistem Database sukses di-generate!")
 		}
 
-		// ---> FIX DITAMBAHKAN DI SINI <---
 		a.killProcess("mysql", "mysqld.exe")
 		time.Sleep(2 * time.Second)
 	}
@@ -713,11 +768,15 @@ func (a *App) DeleteProject(projectName string) {
 
 // ==== BACKUP DB ====
 func (a *App) BackupDB(port int) {
+	cfg := a.readSettings()
+	if port == 0 {
+		port = cfg.DBPort
+	}
 	if port == 0 {
 		port = 3307
 	}
+
 	cwd := a.getAppDir()
-	cfg := a.readSettings()
 	dumpPath := filepath.Join(cwd, "bin", "mysql", cfg.MySQL, "bin", "mysqldump.exe")
 	if _, err := os.Stat(dumpPath); os.IsNotExist(err) {
 		dumpPath = filepath.Join(cwd, "bin", "mysql", "mysqldump.exe")
@@ -770,7 +829,13 @@ func (a *App) RebuildSSL() {
 		return
 	}
 
-	a.generateVirtualHosts(80)
+	cfg := a.readSettings()
+	webPort := cfg.WebPort
+	if webPort == 0 {
+		webPort = 80
+	}
+
+	a.generateVirtualHosts(webPort)
 	a.emitLog("✅ Rebuild SSL Sukses! Silakan STOP PHP lalu START PHP kembali.")
 }
 

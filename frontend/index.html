@@ -520,7 +520,17 @@
             const version = await window.serverAPI.getAppVersion();
             document.getElementById('appVersionText').innerText = `Versi ${version}`;
             
-            // TUNNEL LANGSUNG UNLOCKED (OPEN SOURCE MODE)
+            // Ambil konfigurasi port dari setting.ini lewat backend
+            try {
+                if (window.serverAPI.getSettings) {
+                    const cfg = await window.serverAPI.getSettings();
+                    if (cfg.web_port) document.getElementById('portWeb').value = cfg.web_port;
+                    if (cfg.db_port) document.getElementById('portDB').value = cfg.db_port;
+                }
+            } catch (e) {
+                console.log("Menggunakan port default fallback.");
+            }
+            
             const tunnelInput = document.getElementById('tunnelDomain');
             if (tunnelInput) {
                 tunnelInput.disabled = false;
@@ -564,12 +574,12 @@
             modal.style.display = 'flex';
         });
 
-      // --- LOGIKA TOMBOL INFO VERSI (DINAMIS DENGAN UI HALUS) ---
+      // --- LOGIKA TOMBOL INFO VERSI (v2.0.1 Single Engine + Download Link) ---
         document.getElementById('btnVersions').addEventListener('click', async () => {
-            document.querySelector('.modal-content').style.maxWidth = '480px'; 
+            document.querySelector('.modal-content').style.maxWidth = '520px'; 
             
             modalTitle.innerText = '⏳ Mengambil Data...';
-            modalBody.innerHTML = '<div style="text-align:center; padding: 20px;">Memindai versi engine lokal...</div>';
+            modalBody.innerHTML = '<div style="text-align:center; padding: 20px;">Memindai konfigurasi engine lokal...</div>';
             modal.style.display = 'flex';
             
             const versions = await window.serverAPI.getVersions();
@@ -577,17 +587,16 @@
             const getActiveVersion = (dataList) => {
                 if (!Array.isArray(dataList)) return '-';
                 const activeItem = dataList.find(item => item.isDefault);
-                return activeItem ? `v${activeItem.versi}` : '<span style="color:var(--red-stop)">Tidak diketahui</span>';
+                return activeItem ? `v${activeItem.versi}` : '<span style="color:var(--red-stop)">Default</span>';
             };
 
             const buatDropdown = (dataList, idElement) => {
-                if (!Array.isArray(dataList) || dataList.length === 0) return '<span style="color:#E53935">Kosong</span>';
+                if (!Array.isArray(dataList) || dataList.length === 0) return '<span style="color:#E53935">Default (Single)</span>';
                 
-                let html = `<select id="${idElement}" class="input-port" style="width: 100%; text-align: left; padding: 5px; cursor: pointer; background: #0A0A0A; border: 1px solid #333; color: var(--accent-orange); border-radius: 4px; outline: none;">`;
-                
+                let html = `<select id="${idElement}" class="input-port" style="width: 100%; text-align: left; padding: 4px; cursor: pointer; background: #0A0A0A; border: 1px solid #333; color: var(--accent-orange); border-radius: 4px; outline: none; font-size: 11px;">`;
                 dataList.forEach(item => {
                     const status = item.isDefault ? 'selected' : '';
-                    html += `<option value="${item.folder}" ${status}>${item.folder}</option>`;
+                    html += `<option value="${item.folder}" ${status}>${item.folder} (${item.versi})</option>`;
                 });
                 html += `</select>`;
                 return html;
@@ -595,50 +604,58 @@
 
             const phpActive = getActiveVersion(versions.php);
             const mysqlActive = getActiveVersion(versions.mysql);
-
             const phpDropdown = buatDropdown(versions.php, 'selectPHP');
             const mysqlDropdown = buatDropdown(versions.mysql, 'selectDB');
 
-            modalTitle.innerText = '⚙️ Pengaturan Engine (Tech Stack)';
+            modalTitle.innerText = '📦 App & Stack Management (v2.0.1)';
             modalBody.innerHTML = `
-                <div style="font-size: 11px; color: var(--text-main); line-height: 2;">
+                <div style="font-size: 11px; color: var(--text-main); line-height: 1.6;">
+                    <p style="margin: 0 0 10px 0; color: var(--text-muted);">
+                        Versi 2.0.1 menggunakan 1 engine bawaan yang ringan. Anda dapat mengunduh versi tambahan melalui tautan resmi di bawah ini.
+                    </p>
                     <table style="width: 100%; text-align: left; border-collapse: collapse;">
                         <tr style="border-bottom: 1px solid #333; color: var(--text-muted);">
-                            <th style="padding-bottom: 5px; width: 25%;">Komponen</th>
-                            <th style="padding-bottom: 5px; width: 35%;">Default</th>
-                            <th style="padding-bottom: 5px; width: 40%;">Pilih Versi</th>
+                            <th style="padding-bottom: 6px; width: 22%;">Komponen</th>
+                            <th style="padding-bottom: 6px; width: 25%;">Default / Aktif</th>
+                            <th style="padding-bottom: 6px; width: 28%;">Pilih Versi</th>
+                            <th style="padding-bottom: 6px; width: 25%; text-align: center;">Download Link</th>
                         </tr>
                         <tr style="border-bottom: 1px dashed #222;">
                             <td style="padding: 8px 0; color: var(--green-start);"><b>Nginx</b></td>
-                            <td style="padding: 8px 0; font-family: monospace; font-size: 12px;">${versions.nginx}</td>
-                            <td style="padding: 8px 0; color: var(--text-muted); font-size: 10px;"><i>(Static)</i></td>
+                            <td style="padding: 8px 0; font-family: monospace;">${versions.nginx}</td>
+                            <td style="padding: 8px 0; color: var(--text-muted);"><i>Built-in</i></td>
+                            <td style="padding: 8px 0; text-align: center;"><a href="#" onclick="window.serverAPI.openExternal('https://nginx.org/en/download.html')" style="color: var(--accent-orange); text-decoration: none;">🌐 Official</a></td>
                         </tr>
                         <tr style="border-bottom: 1px dashed #222;">
                             <td style="padding: 8px 0; color: var(--accent-orange);"><b>PHP</b></td>
-                            <td style="padding: 8px 0; font-family: monospace; font-size: 12px; color: #fff;">${phpActive}</td>
+                            <td style="padding: 8px 0; font-family: monospace; color: #fff;">${phpActive}</td>
                             <td style="padding: 8px 0;">${phpDropdown}</td>
+                            <td style="padding: 8px 0; text-align: center;"><a href="#" onclick="window.serverAPI.openExternal('https://windows.php.net/download/')" style="color: var(--accent-orange); text-decoration: none;">🌐 Official</a></td>
                         </tr>
                         <tr style="border-bottom: 1px dashed #222;">
                             <td style="padding: 8px 0; color: #00BCD4;"><b>Database</b></td>
-                            <td style="padding: 8px 0; font-family: monospace; font-size: 12px; color: #fff;">${mysqlActive}</td>
+                            <td style="padding: 8px 0; font-family: monospace; color: #fff;">${mysqlActive}</td>
                             <td style="padding: 8px 0;">${mysqlDropdown}</td>
+                            <td style="padding: 8px 0; text-align: center;"><a href="#" onclick="window.serverAPI.openExternal('https://mariadb.org/download/')" style="color: var(--accent-orange); text-decoration: none;">🌐 Official</a></td>
                         </tr>
                         <tr style="border-bottom: 1px dashed #222;">
                             <td style="padding: 8px 0; color: #F44336;"><b>Redis</b></td>
-                            <td style="padding: 8px 0; font-family: monospace; font-size: 12px;">v5.0.14.1</td>
-                            <td style="padding: 8px 0; color: var(--text-muted); font-size: 10px;"><i>(Static)</i></td>
+                            <td style="padding: 8px 0; font-family: monospace;">v5.0.14</td>
+                            <td style="padding: 8px 0; color: var(--text-muted);"><i>Built-in</i></td>
+                            <td style="padding: 8px 0; text-align: center;"><a href="#" onclick="window.serverAPI.openExternal('https://github.com/microsoftarchive/redis/releases')" style="color: var(--accent-orange); text-decoration: none;">🌐 Official</a></td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px 0; color: #E91E63;"><b>PMA</b></td>
-                            <td style="padding: 8px 0; font-family: monospace; font-size: 12px;">v5.2.3</td>
-                            <td style="padding: 8px 0; color: var(--text-muted); font-size: 10px;"><i>(Static)</i></td>
+                            <td style="padding: 8px 0; color: #E91E63;"><b>Mailpit</b></td>
+                            <td style="padding: 8px 0; font-family: monospace;">Latest</td>
+                            <td style="padding: 8px 0; color: var(--text-muted);"><i>Built-in</i></td>
+                            <td style="padding: 8px 0; text-align: center;"><a href="#" onclick="window.serverAPI.openExternal('https://github.com/axllent/mailpit/releases')" style="color: var(--accent-orange); text-decoration: none;">🌐 Official</a></td>
                         </tr>
                     </table>
                 </div>
                 
                 <div id="saveMsg" style="text-align: center; font-size: 11px; margin-top: 10px; font-weight: bold; height: 15px;"></div>
                 
-                <button id="btnSaveEngine" style="margin-top: 5px; width: 100%; background-color: var(--accent-orange); color: #121212; border:none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s;">💾 SIMPAN PERUBAHAN</button>
+                <button id="btnSaveEngine" style="margin-top: 10px; width: 100%; background-color: var(--accent-orange); color: #121212; border:none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s;">💾 SIMPAN KONFIGURASI</button>
             `;
 
             document.getElementById('btnSaveEngine').addEventListener('click', async () => {
@@ -647,17 +664,24 @@
                 const selectPHP = document.getElementById('selectPHP');
                 const selectDB = document.getElementById('selectDB');
                 
-                const phpBaru = selectPHP ? selectPHP.value : "";
-                const dbBaru = selectDB ? selectDB.value : "";
+                const phpBaru = selectPHP ? selectPHP.value : "php";
+                const dbBaru = selectDB ? selectDB.value : "mariadb";
+                const webPortVal = document.getElementById('portWeb').value || "80";
+                const dbPortVal = document.getElementById('portDB').value || "3307";
                 
                 btn.innerText = "⏳ MENYIMPAN...";
                 btn.style.opacity = "0.7";
 
-                const result = await window.serverAPI.saveSettings({ php: phpBaru, mysql: dbBaru });
+                const result = await window.serverAPI.saveSettings({ 
+                    php: phpBaru, 
+                    mysql: dbBaru,
+                    web_port: webPortVal,
+                    db_port: dbPortVal
+                });
                 
                 if (result.success) {
-                    msg.innerText = "Restart service terkait untuk menerapkan!";
-                    msg.style.color = "var(--text-muted)";
+                    msg.innerText = "Konfigurasi berhasil diterapkan!";
+                    msg.style.color = "var(--green-start)";
                     
                     btn.innerText = "✅ BERHASIL DISIMPAN!";
                     btn.style.backgroundColor = "var(--green-start)";
@@ -666,11 +690,10 @@
                     
                     setTimeout(() => {
                         modal.style.display = 'none';
-                    }, 2000);
+                    }, 1500);
                 } else {
                     msg.innerText = "❌ Gagal menyimpan!";
                     msg.style.color = "var(--red-stop)";
-                    
                     btn.innerText = "💾 COBA LAGI";
                     btn.style.opacity = "1";
                 }
