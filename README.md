@@ -8,7 +8,7 @@
 **NgAppIDServ** adalah aplikasi *Web Server* Lokal modern berbasis GUI (Graphical User Interface) berlisensi **100% Open Source & Free**, yang dirancang khusus untuk memudahkan workflow *developer* web Indonesia. Dibangun ulang secara *native* menggunakan **Golang (Wails)** untuk performa super ringan dan anti-zombie, aplikasi ini menawarkan pengalaman manajemen server lokal sekelas *Enterprise* dengan fitur andalan **Auto-Virtual Host**, **Auto-SSL (HTTPS)**, **Pre-Flight Port Checker**, dan **Integrasi Tunnel (Localtunnel)** secara instan tanpa batasan apapun.
 
 ---
-![Tampilan NgAppIDServ](screenshot.png)
+![Tampilan NgAppIDServ](screenshoot.png)
 ---
 
 ## 🚀 Fitur Utama
