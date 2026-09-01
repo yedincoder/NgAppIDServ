@@ -41,13 +41,11 @@ func (a *App) getAppDir() string {
 	exePath, _ := os.Executable()
 	exeDir := filepath.Dir(exePath)
 	
-	// Jika aplikasi berjalan lewat 'wails dev', file exe ada di build/bin/
 	cleanPath := strings.ReplaceAll(exeDir, "\\", "/")
 	if strings.HasSuffix(cleanPath, "build/bin") {
 		return filepath.Clean(filepath.Join(exeDir, "..", ".."))
 	}
 	
-	// Jika sudah di-build, gunakan folder aslinya
 	return exeDir
 }
 
@@ -333,16 +331,25 @@ func (a *App) Start(port int) {
 	a.emitLog(fmt.Sprintf("🌐 Auto Virtual Host diperbarui (Port: %d)!", port))
 
 	cfg := a.readSettings()
+	a.emitLog(fmt.Sprintf("🐘 Menggunakan Engine PHP: [%s]", cfg.PHP))
+
 	phpExe := filepath.Join(cwd, "bin", "php", cfg.PHP, "php-cgi.exe")
 	if _, err := os.Stat(phpExe); os.IsNotExist(err) {
 		phpExe = filepath.Join(cwd, "bin", "php", "php-cgi.exe") 
 	}
 
-	// 2. AUTO-FIX PHP.INI (SESSION & EXTENSION PATH)
-	phpIniPath := filepath.Join(filepath.Dir(phpExe), "php.ini")
-	extPath := strings.ReplaceAll(filepath.Join(filepath.Dir(phpExe), "ext"), "\\", "/")
+	// 2. AUTO-FIX PHP.INI SESUAI VERSI YANG DIPILIH
+	phpDir := filepath.Dir(phpExe)
+	phpIniPath := filepath.Join(phpDir, "php.ini")
 	
-	// Bikin folder tmp khusus untuk session PHP
+	if _, err := os.Stat(phpIniPath); os.IsNotExist(err) {
+		devIni := filepath.Join(phpDir, "php.ini-development")
+		if _, errDev := os.Stat(devIni); errDev == nil {
+			bytesDev, _ := os.ReadFile(devIni)
+			os.WriteFile(phpIniPath, bytesDev, 0644)
+		}
+	}
+
 	tmpPath := filepath.Join(cwd, "bin", "php", "tmp")
 	os.MkdirAll(tmpPath, 0755)
 	tmpPathStr := strings.ReplaceAll(tmpPath, "\\", "/")
@@ -350,21 +357,28 @@ func (a *App) Start(port int) {
 	if b, err := os.ReadFile(phpIniPath); err == nil {
 		content := string(b)
 		
-		// Fix Extension Dir
 		if strings.Contains(content, "extension_dir") {
-			content = regexp.MustCompile(`(?m)^[\s#]*extension_dir\s*=.*`).ReplaceAllString(content, fmt.Sprintf(`extension_dir = "%s"`, extPath))
+			content = regexp.MustCompile(`(?m)^[\s#]*extension_dir\s*=.*`).ReplaceAllString(content, `extension_dir = "ext"`)
 		} else {
-			content += fmt.Sprintf("\nextension_dir = \"%s\"\n", extPath)
+			content += "\nextension_dir = \"ext\"\n"
+		}
+
+		requiredExts := []string{"mysqli", "pdo_mysql", "fileinfo", "gd", "mbstring", "openssl", "curl"}
+		for _, ext := range requiredExts {
+			pattern := regexp.MustCompile(`(?m)^[\s#]*extension\s*=\s*` + ext + `\b`)
+			if pattern.MatchString(content) {
+				content = pattern.ReplaceAllString(content, "extension="+ext)
+			} else {
+				content += "\nextension=" + ext
+			}
 		}
 		
-		// Fix Session Path (Biar phpMyAdmin jalan)
 		if strings.Contains(content, "session.save_path") {
 			content = regexp.MustCompile(`(?m)^[\s#]*session\.save_path\s*=.*`).ReplaceAllString(content, fmt.Sprintf(`session.save_path = "%s"`, tmpPathStr))
 		} else {
 			content += fmt.Sprintf("\nsession.save_path = \"%s\"\n", tmpPathStr)
 		}
 
-		// Fix Upload Tmp Dir (Biar bisa upload file/database besar)
 		if strings.Contains(content, "upload_tmp_dir") {
 			content = regexp.MustCompile(`(?m)^[\s#]*upload_tmp_dir\s*=.*`).ReplaceAllString(content, fmt.Sprintf(`upload_tmp_dir = "%s"`, tmpPathStr))
 		} else {
@@ -374,7 +388,6 @@ func (a *App) Start(port int) {
 		os.WriteFile(phpIniPath, []byte(content), 0644)
 	}
 
-	// Kill sisa zombie
 	cmdKillPHP := exec.Command("taskkill", "/F", "/IM", "php-cgi.exe")
 	cmdKillPHP.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	cmdKillPHP.Run()
@@ -461,7 +474,6 @@ func (a *App) StartDB(port int) {
 		mysqlExe = filepath.Join(cwd, "bin", "mysql", "mysqld.exe")
 	}
 
-	// 1. AUTO-INITIALIZE DATADIR MARIADB
 	sysDbDir := filepath.Join(dataDir, "mysql")
 	if _, err := os.Stat(sysDbDir); os.IsNotExist(err) {
 		a.emitLog("⚙️ Menyiapkan sistem Database untuk pertama kalinya...")
@@ -471,7 +483,6 @@ func (a *App) StartDB(port int) {
 			cmdInit := exec.Command(installDbExe, fmt.Sprintf("--datadir=%s", dataDir))
 			cmdInit.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 			
-			// TANGKAP OUTPUT ERROR ASLI DARI MARIADB
 			if out, errInit := cmdInit.CombinedOutput(); errInit != nil {
 				a.emitLog(fmt.Sprintf("❌ Gagal inisialisasi MariaDB: %s", string(out)))
 				return
@@ -487,9 +498,12 @@ func (a *App) StartDB(port int) {
 			}
 			a.emitLog("✅ Sistem Database sukses di-generate!")
 		}
+
+		// ---> FIX DITAMBAHKAN DI SINI <---
+		a.killProcess("mysql", "mysqld.exe")
+		time.Sleep(2 * time.Second)
 	}
 
-	// 2. EKSEKUSI DATABASE
 	dbCmd := exec.Command(mysqlExe, "--console", fmt.Sprintf("--datadir=%s", dataDir), fmt.Sprintf("--port=%d", port))
 	dbCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	
@@ -501,12 +515,10 @@ func (a *App) StartDB(port int) {
 	}
 	a.processes["mysql"] = dbCmd
 
-	// 3. TANGKAP CRASH & LOG DB
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
-			// Tampilkan error/warning serius ke UI
 			if strings.Contains(strings.ToLower(line), "error") {
 				a.emitLog("🔴 [DB LOG] " + line)
 			}
@@ -567,7 +579,7 @@ func (a *App) StopMail() {
 	a.emitStatus("lampuMail", "off")
 }
 
-// ==== LOCALTUNNEL CUSTOM SUBDOMAIN (YEDIN-NGAPPID STYLE) ====
+// ==== TUNNEL (LOCALTUNNEL) ====
 type TunnelData struct {
 	Domain string `json:"domain"`
 	Port   any    `json:"port"`
@@ -578,7 +590,6 @@ func (a *App) StartTunnel(data TunnelData) {
 		return
 	}
 	
-	// 1. Parsing Port
 	portInt := 80
 	switch v := data.Port.(type) {
 	case float64:
@@ -594,7 +605,6 @@ func (a *App) StartTunnel(data TunnelData) {
 		portInt = 80
 	}
 
-	// 2. Generate Custom Subdomain
 	domainTarget := data.Domain
 	if domainTarget == "" {
 		domainTarget = "percobaan.test"
@@ -607,12 +617,10 @@ func (a *App) StartTunnel(data TunnelData) {
 
 	a.emitLog(fmt.Sprintf("⏳ Menghubungkan Localtunnel [%s.loca.lt]...", customSubdomain))
 	
-	// 3. Eksekusi Node Portable Anti-Bentrok
 	cwd := a.getAppDir()
 	nodeExe := filepath.Join(cwd, "bin", "localtunnel", "lt-node.exe")
 	ltScript := filepath.Join(cwd, "bin", "localtunnel", "node_modules", "localtunnel", "bin", "lt.js")
 
-	// Tambahkan argumen "--local-host", domainTarget agar tunnel masuk ke vhost yang tepat
 	cmd := exec.Command(nodeExe, ltScript, "--port", fmt.Sprintf("%d", portInt), "--subdomain", customSubdomain, "--local-host", domainTarget)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	
@@ -626,7 +634,6 @@ func (a *App) StartTunnel(data TunnelData) {
 		return
 	}
 
-	// 4. Goroutine Tangkap Output Sukses
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
@@ -643,7 +650,6 @@ func (a *App) StartTunnel(data TunnelData) {
 		}
 	}()
 
-	// 5. Goroutine Tangkap Error
 	go func() {
 		scannerErr := bufio.NewScanner(stderr)
 		for scannerErr.Scan() {
@@ -669,9 +675,7 @@ func (a *App) StopAll() {
 }
 
 // ==== PROJECT MANAGER ====
-
 func (a *App) getWwwPath() string {
-	// Panggil fungsi sakti getAppDir agar tidak nyasar ke build/bin/www
 	return filepath.Join(a.getAppDir(), "www")
 }
 
@@ -688,10 +692,7 @@ func (a *App) GetProjects() []string {
 }
 
 func (a *App) OpenFolder(projectName string) {
-	// Dapatkan path akurat
 	targetPath := filepath.Join(a.getWwwPath(), projectName)
-	
-	// Panggil native Explorer Windows (nggak butuh trik cmd hide lagi)
 	err := exec.Command("explorer", targetPath).Start()
 	
 	if err != nil {
@@ -709,7 +710,6 @@ func (a *App) DeleteProject(projectName string) {
 	os.Remove(vhostPath)
 	a.emitLog(fmt.Sprintf("🗑️ Project [%s] berhasil dihapus permanen!", projectName))
 }
-
 
 // ==== BACKUP DB ====
 func (a *App) BackupDB(port int) {
@@ -839,7 +839,6 @@ func (a *App) InstallApp(data InstallData) {
 func (a *App) OpenCmdWWW() {
 	cwd := a.getAppDir()
 	wwwPath := filepath.Join(cwd, "www")
-	// Ini dibiarkan muncul karena tujuannya emang ngebuka Console untuk interaksi user
 	cmd := exec.Command("cmd", "/c", "start", "NgAppIDServ Console", "cmd.exe", "/k", fmt.Sprintf(`chcp 65001 >nul & color 0A & title NgAppIDServ Console & echo ================================================== & echo. & echo        🚀 WELCOME TO NgAppIDServ CONSOLE 🚀 & echo. & echo ================================================== & echo. & cd /d "%s"`, wwwPath))
 	cmd.Run()
 	a.emitLog("⌨️ Membuka NgAppIDServ Console di folder www...")
@@ -866,7 +865,6 @@ func (a *App) OpenLog(logType string) {
 		os.WriteFile(logPath, []byte(fmt.Sprintf("=== Log %s (Belum Ada Error) ===\n\n", strings.ToUpper(logType))), 0644)
 	}
 
-	// Langsung panggil notepad tanpa HideWindow agar jendelanya muncul
 	cmd := exec.Command("notepad.exe", logPath)
 	cmd.Start()
 	

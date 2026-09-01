@@ -533,7 +533,7 @@
 	document.addEventListener('contextmenu', event => event.preventDefault());
         // --- BUKA JENDELA INFO DONASI (OPEN SOURCE MODE) ---
         document.getElementById('btnLisensi').addEventListener('click', () => {
-            document.querySelector('.modal-content').style.maxWidth = '550px'; 
+            document.querySelector('.modal-content').style.maxWidth = '80%';
             
             modalTitle.innerText = '☕ Dukung Pengembangan NgAppIDServ';
             
@@ -680,6 +680,7 @@
         // --- LOGIKA TOMBOL REBUILD SSL ---
         document.getElementById('btnRebuildSSL').addEventListener('click', () => {
             modalTitle.innerText = '🔐 Konfirmasi Rebuild SSL';
+            document.querySelector('.modal-content').style.maxWidth = '80%';
             
             modalBody.innerHTML = `
                 <div style="margin-bottom: 20px; font-size: 13px; color: var(--text-main); line-height: 1.5;">
@@ -702,10 +703,10 @@
         
         document.getElementById('btnAbout').addEventListener('click', () => {
             modalTitle.innerText = '💡 About NgAppIDServ';
+            document.querySelector('.modal-content').style.maxWidth = '80%';
             modalBody.innerHTML = `
                 <div style="text-align:center;">
                     <h3 style="margin: 0; color: var(--accent-orange); border: none; padding: 0;">NgAppIDServ</h3>
-                    <p style="color: var(--text-main); font-weight: bold; margin-top: 5px;">Versi 1.0.9</p>
                     <p style="font-size: 11px;">Local Web Server Modern & Cepat berbasis Golang (Wails).</p>
                     <div style="background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 3px solid var(--accent-orange); margin-top: 15px; text-align: left; font-size: 11px;">
                         <b>Dikembangkan oleh:</b><br>
@@ -728,7 +729,7 @@
        document.getElementById('btnReadme').addEventListener('click', () => {
             modalTitle.innerText = '📖 Readme & Fitur';
             
-            document.querySelector('.modal-content').style.maxWidth = '600px';
+            document.querySelector('.modal-content').style.maxWidth = '80%';
 
             modalBody.innerHTML = `
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
@@ -775,6 +776,7 @@
         document.getElementById('btnOpenProject').addEventListener('click', async () => {
             const projects = await window.serverAPI.getProjects();
             modalTitle.innerText = '📂 Daftar Project Lokal';
+            document.querySelector('.modal-content').style.maxWidth = '80%';
             
             let htmlList = '<div style="display:flex; flex-direction:column; gap:8px; max-height: 300px; overflow-y: auto; padding-right: 5px;">';
             
@@ -810,6 +812,7 @@
         // --- LOGIKA TOMBOL ERROR LOGS ---
         document.getElementById('btnErrorLogs').addEventListener('click', () => {
             modalTitle.innerText = '🐞 Error Logs Viewer';
+            document.querySelector('.modal-content').style.maxWidth = '80%';
             modalBody.innerHTML = `
                 <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5; text-align: center;">
                     Pilih file log yang ingin dipantau. File akan terbuka otomatis di Notepad.
@@ -836,6 +839,7 @@
         // --- FUNGSI MODAL KONFIRMASI HAPUS ---
         window.konfirmasiHapus = function(namaProject) {
             modalTitle.innerText = '🗑️ Konfirmasi Hapus Project';
+            document.querySelector('.modal-content').style.maxWidth = '80%';
             modalBody.innerHTML = `
                 <div style="margin-bottom: 20px; font-size: 13px; color: var(--text-main); line-height: 1.5;">
                     Apakah kamu yakin ingin menghapus project <b>${namaProject}</b>?<br><br>
