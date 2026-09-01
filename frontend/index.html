@@ -474,7 +474,7 @@
             <span id="btnLisensi">👑 Donasi</span>
             <span id="btnAbout">💡 About</span>
             <span id="btnReadme">📖 Readme</span>
-            <span id="btnWebsite">🌐 NgAppID.com</span>
+            <span id="btnWebsite">🌐 Dev.NgAppID.com</span>
         </div>
         <div class="footer-right">
             &copy; 2026
@@ -574,7 +574,7 @@
             modal.style.display = 'flex';
         });
 
-      // --- LOGIKA TOMBOL INFO VERSI (v2.0.1 Single Engine + Download Link) ---
+      // --- LOGIKA TOMBOL INFO VERSI (Single Engine + Download Link) ---
         document.getElementById('btnVersions').addEventListener('click', async () => {
             document.querySelector('.modal-content').style.maxWidth = '520px'; 
             
@@ -607,12 +607,9 @@
             const phpDropdown = buatDropdown(versions.php, 'selectPHP');
             const mysqlDropdown = buatDropdown(versions.mysql, 'selectDB');
 
-            modalTitle.innerText = '📦 App & Stack Management (v2.0.1)';
+            modalTitle.innerText = '📦 App & Stack Management';
             modalBody.innerHTML = `
                 <div style="font-size: 11px; color: var(--text-main); line-height: 1.6;">
-                    <p style="margin: 0 0 10px 0; color: var(--text-muted);">
-                        Versi 2.0.1 menggunakan 1 engine bawaan yang ringan. Anda dapat mengunduh versi tambahan melalui tautan resmi di bawah ini.
-                    </p>
                     <table style="width: 100%; text-align: left; border-collapse: collapse;">
                         <tr style="border-bottom: 1px solid #333; color: var(--text-muted);">
                             <th style="padding-bottom: 6px; width: 22%;">Komponen</th>
@@ -947,7 +944,7 @@
         });
 
         document.getElementById('btnWebsite').addEventListener('click', () => {
-            window.serverAPI.openExternal('https://ngappid.com');
+            window.serverAPI.openExternal('https://dev.ngappid.com');
         });
 
         document.getElementById('btnMailpitLink').addEventListener('click', () => {

@@ -86,7 +86,7 @@ func (a *App) OpenExternal(url string) { runtime.BrowserOpenURL(a.ctx, url) }
 func (a *App) OpenPMA()                { runtime.BrowserOpenURL(a.ctx, "http://localhost/phpmyadmin") }
 func (a *App) GetAppVersion() string { return "2.0.1" }
 
-// ==== SETTING.INI (v2.0.1 Upgraded: Dynamic Port & Single PHP Default) ====
+// ==== SETTING.INI (Upgraded: Dynamic Port & Single PHP Default) ====
 type Config struct {
 	PHP     string `json:"php"`
 	MySQL   string `json:"mysql"`
@@ -98,7 +98,7 @@ func (a *App) readSettings() Config {
 	cwd := a.getAppDir()
 	settingPath := filepath.Join(cwd, "setting.ini")
 	
-	// Default v2.0.1 config
+	// Default config
 	config := Config{
 		PHP:     "php",
 		MySQL:   "mariadb",
@@ -163,7 +163,7 @@ func (a *App) SaveSettings(data map[string]string) map[string]any {
 	return map[string]any{"success": true, "message": "Konfigurasi berhasil diperbarui!"}
 }
 
-// ==== DETEKSI VERSI (v2.0.1 Single Engine Support) ====
+// ==== DETEKSI VERSI (Single Engine Support) ====
 func (a *App) GetVersions() map[string]any {
 	cwd := a.getAppDir()
 	cfg := a.readSettings()
