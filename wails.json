@@ -1,0 +1,12 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "NgAppIDServ",
+  "outputfilename": "NgAppIDServ",
+  "frontend:dir": "frontend",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "author": { "name": "NgAppID", "email": "dev@ngappid.com" },
+  "info": { "companyName": "NgAppID", "productName": "NgAppIDServ", "productVersion": "1.0.9", "copyright": "Copyright 2026 NgAppID" }
+}
