@@ -36,6 +36,21 @@ func (a *App) shutdown(ctx context.Context) {
 	a.StopAll()
 }
 
+// ==== FUNGSI SAKTI ANTI NYASAR (WAILS DEV) ====
+func (a *App) getAppDir() string {
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	
+	// Jika aplikasi berjalan lewat 'wails dev', file exe ada di build/bin/
+	cleanPath := strings.ReplaceAll(exeDir, "\\", "/")
+	if strings.HasSuffix(cleanPath, "build/bin") {
+		return filepath.Clean(filepath.Join(exeDir, "..", ".."))
+	}
+	
+	// Jika sudah di-build, gunakan folder aslinya
+	return exeDir
+}
+
 // ==== GAYA GO: HELPER LOG & KILL PROCESS ====
 func (a *App) emitLog(msg string) {
 	runtime.EventsEmit(a.ctx, "server-log", msg)
@@ -71,7 +86,7 @@ func (a *App) isPortInUse(port int) bool {
 
 func (a *App) OpenExternal(url string) { runtime.BrowserOpenURL(a.ctx, url) }
 func (a *App) OpenPMA()                { runtime.BrowserOpenURL(a.ctx, "http://localhost/phpmyadmin") }
-func (a *App) GetAppVersion() string   { return "1.0.9" }
+func (a *App) GetAppVersion() string { return "2.0.0" }
 
 // ==== SETTING.INI ====
 type Config struct {
@@ -80,7 +95,7 @@ type Config struct {
 }
 
 func (a *App) readSettings() Config {
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	settingPath := filepath.Join(cwd, "setting.ini")
 	config := Config{PHP: "php-8.3.32-nts-Win32-vs16-x64", MySQL: "mariadb"}
 
@@ -101,7 +116,7 @@ func (a *App) readSettings() Config {
 }
 
 func (a *App) SaveSettings(data map[string]string) map[string]any {
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	settingPath := filepath.Join(cwd, "setting.ini")
 	current := a.readSettings()
 	if php, ok := data["php"]; ok && php != "" {
@@ -119,7 +134,7 @@ func (a *App) SaveSettings(data map[string]string) map[string]any {
 
 // ==== DETEKSI VERSI ====
 func (a *App) GetVersions() map[string]any {
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	cfg := a.readSettings()
 	versions := map[string]any{"nginx": "Unknown", "php": []map[string]any{}, "mysql": []map[string]any{}}
 
@@ -173,7 +188,7 @@ func (a *App) GetVersions() map[string]any {
 
 // ==== AUTO VHOST & SYNC HOSTS ====
 func (a *App) generateVirtualHosts(webPort int) {
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	wwwPath := filepath.Join(cwd, "www")
 	vhostDir := filepath.Join(cwd, "bin", "nginx", "vhosts") 
 	sslDir := filepath.Join(cwd, "bin", "nginx", "ssl")
@@ -280,7 +295,7 @@ func (a *App) Start(port int) {
 		return
 	}
 
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 
 	// 1. SSL GENERATOR
 	sslDir := filepath.Join(cwd, "bin", "nginx", "ssl")
@@ -410,7 +425,7 @@ func (a *App) Start(port int) {
 }
 
 func (a *App) Stop() {
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	cmdQuit := exec.Command(filepath.Join(cwd, "bin", "nginx", "nginx.exe"), "-s", "quit", "-p", filepath.Join(cwd, "bin", "nginx"))
 	cmdQuit.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	cmdQuit.Run()
@@ -436,7 +451,7 @@ func (a *App) StartDB(port int) {
 		return
 	}
 
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	cfg := a.readSettings()
 	dataDir := filepath.Join(cwd, "data", "mysql")
 	os.MkdirAll(dataDir, 0755)
@@ -446,13 +461,61 @@ func (a *App) StartDB(port int) {
 		mysqlExe = filepath.Join(cwd, "bin", "mysql", "mysqld.exe")
 	}
 
+	// 1. AUTO-INITIALIZE DATADIR MARIADB
+	sysDbDir := filepath.Join(dataDir, "mysql")
+	if _, err := os.Stat(sysDbDir); os.IsNotExist(err) {
+		a.emitLog("⚙️ Menyiapkan sistem Database untuk pertama kalinya...")
+		installDbExe := filepath.Join(filepath.Dir(mysqlExe), "mysql_install_db.exe")
+		
+		if _, errInstall := os.Stat(installDbExe); errInstall == nil {
+			cmdInit := exec.Command(installDbExe, fmt.Sprintf("--datadir=%s", dataDir))
+			cmdInit.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+			
+			// TANGKAP OUTPUT ERROR ASLI DARI MARIADB
+			if out, errInit := cmdInit.CombinedOutput(); errInit != nil {
+				a.emitLog(fmt.Sprintf("❌ Gagal inisialisasi MariaDB: %s", string(out)))
+				return
+			}
+			a.emitLog("✅ Sistem Database sukses di-generate!")
+		} else {
+			cmdInit := exec.Command(mysqlExe, "--initialize-insecure", "--console", fmt.Sprintf("--datadir=%s", dataDir))
+			cmdInit.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+			
+			if out, errInit := cmdInit.CombinedOutput(); errInit != nil {
+				a.emitLog(fmt.Sprintf("❌ Gagal inisialisasi MySQL: %s", string(out)))
+				return
+			}
+			a.emitLog("✅ Sistem Database sukses di-generate!")
+		}
+	}
+
+	// 2. EKSEKUSI DATABASE
 	dbCmd := exec.Command(mysqlExe, "--console", fmt.Sprintf("--datadir=%s", dataDir), fmt.Sprintf("--port=%d", port))
 	dbCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+	
+	stderr, _ := dbCmd.StderrPipe()
+
 	if err := dbCmd.Start(); err != nil {
 		a.emitLog(fmt.Sprintf("❌ Gagal start MySQL: %v", err))
 		return
 	}
 	a.processes["mysql"] = dbCmd
+
+	// 3. TANGKAP CRASH & LOG DB
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			// Tampilkan error/warning serius ke UI
+			if strings.Contains(strings.ToLower(line), "error") {
+				a.emitLog("🔴 [DB LOG] " + line)
+			}
+		}
+		dbCmd.Wait()
+		a.emitLog("⚠️ DATABASE TIBA-TIBA BERHENTI (CRASH)!")
+		a.emitStatus("lampuDB", "off")
+		delete(a.processes, "mysql")
+	}()
 
 	a.emitLog(fmt.Sprintf("🐬 Database %s Aktif di Port %d", cfg.MySQL, port))
 	a.emitStatus("lampuDB", "on")
@@ -469,7 +532,7 @@ func (a *App) StartRedis() {
 	if a.processes["redis"] != nil {
 		return
 	}
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	cmd := exec.Command(filepath.Join(cwd, "bin", "redis", "redis-server.exe"))
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	if err := cmd.Start(); err == nil {
@@ -489,7 +552,7 @@ func (a *App) StartMail() {
 	if a.processes["mail"] != nil {
 		return
 	}
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	cmd := exec.Command(filepath.Join(cwd, "bin", "mail", "mailpit.exe"))
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	if err := cmd.Start(); err == nil {
@@ -545,7 +608,7 @@ func (a *App) StartTunnel(data TunnelData) {
 	a.emitLog(fmt.Sprintf("⏳ Menghubungkan Localtunnel [%s.loca.lt]...", customSubdomain))
 	
 	// 3. Eksekusi Node Portable Anti-Bentrok
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	nodeExe := filepath.Join(cwd, "bin", "localtunnel", "lt-node.exe")
 	ltScript := filepath.Join(cwd, "bin", "localtunnel", "node_modules", "localtunnel", "bin", "lt.js")
 
@@ -608,8 +671,8 @@ func (a *App) StopAll() {
 // ==== PROJECT MANAGER ====
 
 func (a *App) getWwwPath() string {
-	exePath, _ := os.Executable()
-	return filepath.Join(filepath.Dir(exePath), "www")
+	// Panggil fungsi sakti getAppDir agar tidak nyasar ke build/bin/www
+	return filepath.Join(a.getAppDir(), "www")
 }
 
 func (a *App) GetProjects() []string {
@@ -653,7 +716,7 @@ func (a *App) BackupDB(port int) {
 	if port == 0 {
 		port = 3307
 	}
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	cfg := a.readSettings()
 	dumpPath := filepath.Join(cwd, "bin", "mysql", cfg.MySQL, "bin", "mysqldump.exe")
 	if _, err := os.Stat(dumpPath); os.IsNotExist(err) {
@@ -679,7 +742,7 @@ func (a *App) BackupDB(port int) {
 // ==== REBUILD SSL ====
 func (a *App) RebuildSSL() {
 	a.emitLog("🔐 Memulai proses Rebuild SSL...")
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	sslDir := filepath.Join(cwd, "bin", "nginx", "ssl")
 	os.Remove(filepath.Join(sslDir, "server.crt"))
 	os.Remove(filepath.Join(sslDir, "server.key"))
@@ -718,7 +781,7 @@ type InstallData struct {
 }
 
 func (a *App) InstallApp(data InstallData) {
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	targetPath := filepath.Join(cwd, "www", data.ProjectName)
 	if _, err := os.Stat(targetPath); err == nil {
 		a.emitLog(fmt.Sprintf("❌ Gagal: Folder project %s sudah ada!", data.ProjectName))
@@ -774,7 +837,7 @@ func (a *App) InstallApp(data InstallData) {
 
 // ==== TOOLS & LOGS ====
 func (a *App) OpenCmdWWW() {
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	wwwPath := filepath.Join(cwd, "www")
 	// Ini dibiarkan muncul karena tujuannya emang ngebuka Console untuk interaksi user
 	cmd := exec.Command("cmd", "/c", "start", "NgAppIDServ Console", "cmd.exe", "/k", fmt.Sprintf(`chcp 65001 >nul & color 0A & title NgAppIDServ Console & echo ================================================== & echo. & echo        🚀 WELCOME TO NgAppIDServ CONSOLE 🚀 & echo. & echo ================================================== & echo. & cd /d "%s"`, wwwPath))
@@ -783,7 +846,7 @@ func (a *App) OpenCmdWWW() {
 }
 
 func (a *App) OpenLog(logType string) {
-	cwd, _ := os.Getwd()
+	cwd := a.getAppDir()
 	cfg := a.readSettings()
 	logPath := filepath.Join(cwd, "crash_log.txt")
 
@@ -802,8 +865,10 @@ func (a *App) OpenLog(logType string) {
 		os.MkdirAll(filepath.Dir(logPath), 0755)
 		os.WriteFile(logPath, []byte(fmt.Sprintf("=== Log %s (Belum Ada Error) ===\n\n", strings.ToUpper(logType))), 0644)
 	}
-	// Ini dibiarkan muncul karena tujuannya ngebuka Notepad
-	cmd := exec.Command("cmd", "/c", "start", `""`, logPath)
-	cmd.Run()
+
+	// Langsung panggil notepad tanpa HideWindow agar jendelanya muncul
+	cmd := exec.Command("notepad.exe", logPath)
+	cmd.Start()
+	
 	a.emitLog(fmt.Sprintf("📖 Membuka file log %s...", strings.ToUpper(logType)))
 }

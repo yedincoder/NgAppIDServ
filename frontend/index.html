@@ -824,8 +824,9 @@
             modal.style.display = 'flex';
 
             document.querySelectorAll('.btn-open-log').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const logType = e.target.getAttribute('data-log');
+                // Hapus e.target, gunakan 'this' agar selalu fokus ke elemen tombol
+                btn.addEventListener('click', function() {
+                    const logType = this.getAttribute('data-log'); 
                     window.serverAPI.openLog(logType);
                     modal.style.display = 'none'; 
                 });
