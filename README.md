@@ -92,7 +92,7 @@ Karena aplikasi kini menggunakan Golang (Wails), pastikan kamu sudah menginstal 
 
 ## 👨‍💻 Author, Support, & Dedication
 
-Dikembangkan dengan ☕ oleh **Abi (YedinCoder)** dan bersifat 100% *Open Source*.
+Dikembangkan dengan ☕ oleh **(YedinCoder)** dan bersifat 100% *Open Source*.
 
 * **Email:** yedincoder@gmail.com
 * **WhatsApp:** 081802161315
@@ -101,4 +101,4 @@ Dikembangkan dengan ☕ oleh **Abi (YedinCoder)** dan bersifat 100% *Open Source
 > ❤️ **Spesial:** 
 > *Sebuah karya  untuk kemudahan developer di seluruh Nusantara. Didedikasikan dengan segenap cinta untuk **Zawjatii**, serta tiga pelita hati: **Shafa**, **Ra'uf**, dan si bungsu **Sa'ad**.*
 
-*Dukungan donasi secara sukarela (seikhlasnya) melalui QRIS atau Saweria sangat menghargai kerja keras pengembangan project ini! 🙏☕*
+*Dukungan pengembangan aplikasi ini secara sukarela (seikhlasnya) melalui QRIS, sangat menghargai kerja keras pengembangan project ini! 🙏☕*
