@@ -22,6 +22,7 @@ type App struct {
 	processes map[string]*exec.Cmd
 }
 
+func (a *App) GetAppVersion() string { return "2.0.1" }
 func NewApp() *App {
 	return &App{
 		processes: make(map[string]*exec.Cmd),
@@ -84,7 +85,6 @@ func (a *App) isPortInUse(port int) bool {
 
 func (a *App) OpenExternal(url string) { runtime.BrowserOpenURL(a.ctx, url) }
 func (a *App) OpenPMA()                { runtime.BrowserOpenURL(a.ctx, "http://localhost/phpmyadmin") }
-func (a *App) GetAppVersion() string { return "2.0.1" }
 
 // ==== SETTING.INI (Upgraded: Dynamic Port & Single PHP Default) ====
 type Config struct {

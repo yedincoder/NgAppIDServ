@@ -7,6 +7,6 @@
   "frontend:build": "",
   "frontend:dev:watcher": "",
   "frontend:dev:serverUrl": "",
-  "author": { "name": "NgAppID", "email": "dev@ngappid.com" },
-  "info": { "companyName": "NgAppID", "productName": "NgAppIDServ", "productVersion": "2.0.1", "copyright": "Copyright 2026 NgAppID" }
+  "author": { "name": "YedinCoder", "email": "yedincoder@gmail.com" },
+  "info": { "companyName": "NgAppID Digital", "productName": "NgAppIDServ", "productVersion": "2.0.1", "copyright": "Copyright 2026 NgAppID" }
 }
