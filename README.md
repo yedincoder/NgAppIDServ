@@ -42,7 +42,7 @@ Aplikasi ini sudah di-*bundle* secara mandiri (*Portable-like*) dengan teknologi
 
 ## 📂 Struktur Folder Penting
 
-Setelah diekstrak/diinstal (default di `C:\ngappidserv`), perhatikan struktur folder berikut:
+Lakukan installasi, perhatikan struktur folder berikut:
 
 * `/www` : **Letakkan semua file project web / script PHP kamu di sini.**
 * `/data/mysql` : Lokasi penyimpanan *raw data* dari database MySQL/MariaDB.
