@@ -1,5 +1,27 @@
 export namespace main {
 	
+	export class Config {
+	    php: string;
+	    mysql: string;
+	    web_port: number;
+	    db_port: number;
+	    pgsql_port: number;
+	    db_manager: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Config(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.php = source["php"];
+	        this.mysql = source["mysql"];
+	        this.web_port = source["web_port"];
+	        this.db_port = source["db_port"];
+	        this.pgsql_port = source["pgsql_port"];
+	        this.db_manager = source["db_manager"];
+	    }
+	}
 	export class InstallData {
 	    appName: string;
 	    projectName: string;

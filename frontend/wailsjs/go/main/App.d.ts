@@ -10,6 +10,8 @@ export function GetAppVersion():Promise<string>;
 
 export function GetProjects():Promise<Array<string>>;
 
+export function GetSettings():Promise<main.Config>;
+
 export function GetVersions():Promise<Record<string, any>>;
 
 export function InstallApp(arg1:main.InstallData):Promise<void>;
@@ -34,6 +36,8 @@ export function StartDB(arg1:number):Promise<void>;
 
 export function StartMail():Promise<void>;
 
+export function StartPgSQL(arg1:number):Promise<void>;
+
 export function StartRedis():Promise<void>;
 
 export function StartTunnel(arg1:main.TunnelData):Promise<void>;
@@ -45,6 +49,8 @@ export function StopAll():Promise<void>;
 export function StopDB():Promise<void>;
 
 export function StopMail():Promise<void>;
+
+export function StopPgSQL():Promise<void>;
 
 export function StopRedis():Promise<void>;
 

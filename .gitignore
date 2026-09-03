@@ -8,6 +8,7 @@ data/
 # ==========================================
 # FILE LOKAL YANG DIABAIKAN (SKIP)
 # ==========================================
+pg_pw.txt
 setting.ini
 *.exe
 crash_log.txt

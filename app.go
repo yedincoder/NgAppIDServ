@@ -22,7 +22,7 @@ type App struct {
 	processes map[string]*exec.Cmd
 }
 
-func (a *App) GetAppVersion() string { return "2.0.1" }
+func (a *App) GetAppVersion() string { return "2.0.2" }
 func NewApp() *App {
 	return &App{
 		processes: make(map[string]*exec.Cmd),
@@ -84,14 +84,23 @@ func (a *App) isPortInUse(port int) bool {
 }
 
 func (a *App) OpenExternal(url string) { runtime.BrowserOpenURL(a.ctx, url) }
-func (a *App) OpenPMA()                { runtime.BrowserOpenURL(a.ctx, "http://localhost/phpmyadmin") }
+func (a *App) OpenPMA() { 
+	cfg := a.readSettings()
+	manager := cfg.DBManager
+	if manager == "" {
+		manager = "ngappidmydb"
+	}
+	runtime.BrowserOpenURL(a.ctx, fmt.Sprintf("http://localhost/%s", manager)) 
+}
 
 // ==== SETTING.INI (Upgraded: Dynamic Port & Single PHP Default) ====
 type Config struct {
-	PHP     string `json:"php"`
-	MySQL   string `json:"mysql"`
-	WebPort int    `json:"web_port"`
-	DBPort  int    `json:"db_port"`
+	PHP       string `json:"php"`
+	MySQL     string `json:"mysql"`
+	WebPort   int    `json:"web_port"`
+	DBPort    int    `json:"db_port"`
+	PgsqlPort int    `json:"pgsql_port"` // <-- Tambahan buat PostgreSQL
+	DBManager string `json:"db_manager"`
 }
 
 func (a *App) readSettings() Config {
@@ -99,15 +108,17 @@ func (a *App) readSettings() Config {
 	settingPath := filepath.Join(cwd, "setting.ini")
 	
 	// Default config
-	config := Config{
-		PHP:     "php",
-		MySQL:   "mariadb",
-		WebPort: 80,
-		DBPort:  3307,
+config := Config{
+		PHP:       "php",
+		MySQL:     "mariadb",
+		WebPort:   80,
+		DBPort:    3307,
+		PgsqlPort: 5432,
+		DBManager: "ngappidmydb",
 	}
 
 	if _, err := os.Stat(settingPath); os.IsNotExist(err) {
-		defaultContent := "[DEFAULT_ENGINE]\r\nphp=php\r\nmysql=mariadb\r\nweb_port=80\r\ndb_port=3307\r\n"
+		defaultContent := "[DEFAULT_ENGINE]\r\nphp=php\r\nmysql=mariadb\r\nweb_port=80\r\ndb_port=3307\r\ndb_manager=ngappidmydb\r\n"
 		os.WriteFile(settingPath, []byte(defaultContent), 0644)
 		return config
 	}
@@ -131,7 +142,18 @@ func (a *App) readSettings() Config {
 			config.DBPort = p
 		}
 	}
+	if m := regexp.MustCompile(`(?m)^pgsql_port\s*=\s*(\d+)$`).FindStringSubmatch(content); len(m) > 1 {
+		if p, err := strconv.Atoi(m[1]); err == nil {
+			config.PgsqlPort = p
+		}
+	}
+	if m := regexp.MustCompile(`(?m)^db_manager\s*=\s*(.+)$`).FindStringSubmatch(content); len(m) > 1 {
+		config.DBManager = strings.TrimSpace(m[1])
+	}
 	return config
+}
+func (a *App) GetSettings() Config {
+	return a.readSettings()
 }
 
 func (a *App) SaveSettings(data map[string]string) map[string]any {
@@ -155,8 +177,18 @@ func (a *App) SaveSettings(data map[string]string) map[string]any {
 			current.DBPort = p
 		}
 	}
+	if pp, ok := data["pgsql_port"]; ok && pp != "" {
+		if p, err := strconv.Atoi(pp); err == nil {
+			current.PgsqlPort = p
+		}
+	}
+	if dbMgr, ok := data["db_manager"]; ok && dbMgr != "" {
+		current.DBManager = dbMgr
+	}
 
-	newIni := fmt.Sprintf("[DEFAULT_ENGINE]\r\nphp=%s\r\nmysql=%s\r\nweb_port=%d\r\ndb_port=%d\r\n", current.PHP, current.MySQL, current.WebPort, current.DBPort)
+	newIni := fmt.Sprintf("[DEFAULT_ENGINE]\r\nphp=%s\r\nmysql=%s\r\nweb_port=%d\r\ndb_port=%d\r\npgsql_port=%d\r\ndb_manager=%s\r\n", 
+        current.PHP, current.MySQL, current.WebPort, current.DBPort, current.PgsqlPort, current.DBManager)
+	
 	if err := os.WriteFile(settingPath, []byte(newIni), 0644); err != nil {
 		return map[string]any{"success": false, "message": "Gagal menyimpan"}
 	}
@@ -262,7 +294,7 @@ func (a *App) generateVirtualHosts(webPort int) {
 	entries, _ := os.ReadDir(wwwPath)
 	var domainList []string
 	for _, entry := range entries {
-		if entry.IsDir() && entry.Name() != "phpmyadmin" {
+	if entry.IsDir() && entry.Name() != "phpmyadmin" && entry.Name() != "ngappidmydb" && entry.Name() != "adminer" {
 			domain := entry.Name() + ".test"
 			domainList = append(domainList, domain)
 			basePath := filepath.Join(wwwPath, entry.Name())
@@ -359,7 +391,7 @@ func (a *App) Start(port int) {
 		domainArgs := []string{"-cert-file", sslCert, "-key-file", sslKey, "localhost", "127.0.0.1"}
 		entries, _ := os.ReadDir(filepath.Join(cwd, "www"))
 		for _, e := range entries {
-			if e.IsDir() && e.Name() != "phpmyadmin" {
+			if e.IsDir() && e.Name() != "phpmyadmin" && e.Name() != "ngappidmydb" && e.Name() != "adminer" {
 				domainArgs = append(domainArgs, e.Name()+".test")
 			}
 		}
@@ -723,6 +755,7 @@ func (a *App) StopTunnel() {
 func (a *App) StopAll() {
 	a.Stop()
 	a.StopDB()
+	a.StopPgSQL()
 	a.StopRedis()
 	a.StopMail()
 	a.StopTunnel()
@@ -739,7 +772,7 @@ func (a *App) GetProjects() []string {
 	entries, _ := os.ReadDir(a.getWwwPath())
 	
 	for _, e := range entries {
-		if e.IsDir() && e.Name() != "phpmyadmin" {
+	if e.IsDir() && e.Name() != "phpmyadmin" && e.Name() != "ngappidmydb" && e.Name() != "adminer" {
 			projs = append(projs, e.Name())
 		}
 	}
@@ -809,7 +842,7 @@ func (a *App) RebuildSSL() {
 	domainArgs := []string{"-cert-file", filepath.Join(sslDir, "server.crt"), "-key-file", filepath.Join(sslDir, "server.key"), "localhost", "127.0.0.1"}
 	entries, _ := os.ReadDir(filepath.Join(cwd, "www"))
 	for _, e := range entries {
-		if e.IsDir() && e.Name() != "phpmyadmin" {
+		if e.IsDir() && e.Name() != "phpmyadmin" && e.Name() != "ngappidmydb" && e.Name() != "adminer" {
 			domainArgs = append(domainArgs, e.Name()+".test")
 		}
 	}
@@ -934,4 +967,130 @@ func (a *App) OpenLog(logType string) {
 	cmd.Start()
 	
 	a.emitLog(fmt.Sprintf("📖 Membuka file log %s...", strings.ToUpper(logType)))
+}
+
+
+
+// ==== START/STOP POSTGRESQL ====
+func (a *App) StopPgSQL() {
+	// Langsung sikat semua postgres.exe yang nyangkut
+	a.killProcess("pgsql", "postgres.exe")
+	
+	a.emitLog("🛑 Database PostgreSQL Dimatikan")
+	a.emitStatus("lampuPgSQL", "off")
+}
+
+
+
+
+
+
+// ==== START/STOP POSTGRESQL ====
+func (a *App) StartPgSQL(port int) {
+	if _, exists := a.processes["pgsql"]; exists {
+		a.emitLog("PostgreSQL sudah berjalan!")
+		return
+	}
+
+	cfg := a.readSettings()
+	if port == 0 { port = cfg.PgsqlPort }
+	if port == 0 { port = 5432 }
+
+	// 1. PEMBERSIH ZOMBIE: Bebaskan port
+	if a.isPortInUse(port) {
+		a.emitLog("🧹 Port tersangkut! Membersihkan sisa proses PostgreSQL...")
+		cmdKill := exec.Command("taskkill", "/F", "/IM", "postgres.exe")
+		cmdKill.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+		cmdKill.Run()
+		time.Sleep(1 * time.Second)
+	}
+
+	if a.isPortInUse(port) {
+		a.emitLog(fmt.Sprintf("❌ GAGAL: Port %d masih digunakan.", port))
+		a.emitStatus("lampuPgSQL", "off")
+		return
+	}
+
+	a.processes["pgsql"] = exec.Command("cmd", "/c", "echo dummy")
+
+	cwd := a.getAppDir()
+	dataDir := filepath.Join(cwd, "data", "pgsql")
+	os.MkdirAll(dataDir, 0755)
+
+	pgBinPath := filepath.Join(cwd, "bin", "pgsql", "bin")
+	postgresExe := filepath.Join(pgBinPath, "postgres.exe")
+	initdbExe := filepath.Join(pgBinPath, "initdb.exe")
+
+	if _, err := os.Stat(postgresExe); os.IsNotExist(err) {
+		a.emitLog("❌ Gagal: Mesin PostgreSQL tidak ditemukan di bin/pgsql/bin!")
+		delete(a.processes, "pgsql")
+		return
+	}
+
+	// 2. JALANKAN DI BACKGROUND
+	go func() {
+		pidFile := filepath.Join(dataDir, "postmaster.pid")
+		if _, err := os.Stat(pidFile); err == nil {
+			os.Remove(pidFile)
+		}
+
+		cmdAcl := exec.Command("icacls", dataDir, "/grant", "*S-1-1-0:(OI)(CI)F", "/T")
+		cmdAcl.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+		cmdAcl.Run()
+
+		isFirstRun := false
+		pwFile := filepath.Join(cwd, "pg_pw.txt")
+
+		if _, err := os.Stat(filepath.Join(dataDir, "PG_VERSION")); os.IsNotExist(err) {
+			a.emitLog("⚙️ Menyiapkan PostgreSQL (Mohon tunggu sebentar)...")
+			isFirstRun = true
+			
+			// Buat file temporary berisi password
+			os.WriteFile(pwFile, []byte("root"), 0644)
+		}
+
+		a.emitLog("⏳ Memulai server PostgreSQL...")
+
+		// 3. SUSUN SCRIPT BATCH (GANTI KE GOTO AGAR ANTI ERROR)
+		batPath := filepath.Join(cwd, "pg_start.bat")
+		batContent := fmt.Sprintf(`@echo off
+IF EXIST "%s\PG_VERSION" GOTO START_PG
+"%s" -D "%s" -U postgres --auth=md5 --pwfile="%s" > "%s\..\pg_init.log" 2>&1
+del "%s"
+
+:START_PG
+"%s" -D "%s" -p %d > "%s\..\pg_run.log" 2>&1
+`, dataDir, initdbExe, dataDir, pwFile, dataDir, pwFile, postgresExe, dataDir, port, dataDir)
+		os.WriteFile(batPath, []byte(batContent), 0644)
+
+		vbsPath := filepath.Join(cwd, "pg_hide.vbs")
+		vbsContent := fmt.Sprintf(`Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run Chr(34) & "%s" & Chr(34), 0, False
+`, batPath)
+		os.WriteFile(vbsPath, []byte(vbsContent), 0644)
+
+		// 4. EKSEKUSI (DROP PRIVILEGE)
+		runasCmd := fmt.Sprintf(`wscript.exe "%s"`, vbsPath)
+		cmdRunas := exec.Command("runas", "/trustlevel:0x20000", runasCmd)
+		cmdRunas.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+		
+		if err := cmdRunas.Run(); err != nil {
+			a.emitLog(fmt.Sprintf("❌ Gagal eksekusi mesin PostgreSQL: %v", err))
+			delete(a.processes, "pgsql")
+			a.emitStatus("lampuPgSQL", "off")
+			return
+		}
+
+		a.emitLog(fmt.Sprintf("🐘 PostgreSQL Aktif di Port %d", port))
+		a.emitStatus("lampuPgSQL", "on")
+
+		if isFirstRun {
+			a.emitLog("🔑 Keamanan MD5 Diaktifkan! Password default adalah: root")
+		}
+
+		// Bersihkan file script
+		time.Sleep(3 * time.Second)
+		os.Remove(vbsPath)
+		os.Remove(batPath)
+	}()
 }

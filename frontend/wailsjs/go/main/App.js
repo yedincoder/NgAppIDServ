@@ -18,6 +18,10 @@ export function GetProjects() {
   return window['go']['main']['App']['GetProjects']();
 }
 
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
+}
+
 export function GetVersions() {
   return window['go']['main']['App']['GetVersions']();
 }
@@ -66,6 +70,10 @@ export function StartMail() {
   return window['go']['main']['App']['StartMail']();
 }
 
+export function StartPgSQL(arg1) {
+  return window['go']['main']['App']['StartPgSQL'](arg1);
+}
+
 export function StartRedis() {
   return window['go']['main']['App']['StartRedis']();
 }
@@ -88,6 +96,10 @@ export function StopDB() {
 
 export function StopMail() {
   return window['go']['main']['App']['StopMail']();
+}
+
+export function StopPgSQL() {
+  return window['go']['main']['App']['StopPgSQL']();
 }
 
 export function StopRedis() {

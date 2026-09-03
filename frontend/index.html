@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -386,6 +386,15 @@
                     <div class="lampu-container">MySQL Server <span id="lampuDB" class="lampu"></span></div>
                 </div>
                 
+                <!-- PostgreSQL -->
+                <div class="row">
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btnTogglePgSQL" class="btn-toggle btn-green">START PGSQL</button>
+                        <input type="number" id="portPgSQL" value="5432" title="Port PostgreSQL" class="input-port">
+                    </div>
+                    <div class="lampu-container">PostgreSQL <span id="lampuPgSQL" class="lampu"></span></div>
+                </div>
+                
                 <!-- Redis -->
                 <div class="row">
                     <div style="display: flex; gap: 10px;">
@@ -438,7 +447,7 @@
                 </button>
                 
                 <button id="btnOpenPMA" class="btn-grid btn-pma">
-                    <span>🗄️</span> PHPMyadmin
+                    <span>🗄️</span> <i id="textDBManager">PMA</i>
                 </button>
                 
                 <button id="btnRebuildSSL" class="btn-grid btn-ssl">
@@ -450,7 +459,7 @@
                 </button>
 
                 <button id="btnVersions" class="btn-grid btn-versi">
-                    <span>ℹ️</span> Versi App
+                    <span>⚙️</span> Settings
                 </button>
 
                 <button id="btnConsoleMain" class="btn-grid btn-console">
@@ -471,7 +480,7 @@
     <!-- Footer Links -->
     <div class="footer-links">
         <div class="footer-left">
-            <span id="btnLisensi">👑 Donasi</span>
+            <span id="btnLisensi">👑 Dukungan</span>
             <span id="btnAbout">💡 About</span>
             <span id="btnReadme">📖 Readme</span>
             <span id="btnWebsite">🌐 Dev.NgAppID.com</span>
@@ -496,6 +505,7 @@
             stopTunnel: () => window.go.main.App.StopTunnel(),
             stopAll: () => window.go.main.App.StopAll(),
             getAppVersion: async () => await window.go.main.App.GetAppVersion(),
+            getSettings: async () => await window.go.main.App.GetSettings(),
             getVersions: async () => await window.go.main.App.GetVersions(),
             getProjects: async () => await window.go.main.App.GetProjects(),
             openFolder: (name) => window.go.main.App.OpenFolder(name),
@@ -508,6 +518,8 @@
             rebuildSSL: () => window.go.main.App.RebuildSSL(),
             installApp: (data) => window.go.main.App.InstallApp(data),
             saveSettings: async (data) => await window.go.main.App.SaveSettings(data),
+            startPgSQL: (port) => window.go.main.App.StartPgSQL(parseInt(port)),
+            stopPgSQL: () => window.go.main.App.StopPgSQL(),
             checkUpdate: () => {}, onUpdateAvailable: () => {}, onUpdateNotAvailable: () => {}, onUpdateError: () => {}
         };
 
@@ -526,6 +538,13 @@
                     const cfg = await window.serverAPI.getSettings();
                     if (cfg.web_port) document.getElementById('portWeb').value = cfg.web_port;
                     if (cfg.db_port) document.getElementById('portDB').value = cfg.db_port;
+                    if (cfg.pgsql_port) document.getElementById('portPgSQL').value = cfg.pgsql_port;
+                    
+                    // Ganti teks tombol DB Manager saat awal load
+                    if (cfg.db_manager) {
+                        const textPMA = document.getElementById('textDBManager');
+                       if (textPMA) textPMA.innerText = (cfg.db_manager === 'ngappidmydb') ? 'NgMyDB' : (cfg.db_manager === 'phpmyadmin' ? 'PMA' : 'Adminer');
+                    }
                 }
             } catch (e) {
                 console.log("Menggunakan port default fallback.");
@@ -540,7 +559,7 @@
             }
         });
 
-	document.addEventListener('contextmenu', event => event.preventDefault());
+    document.addEventListener('contextmenu', event => event.preventDefault());
         // --- BUKA JENDELA INFO DONASI (OPEN SOURCE MODE) ---
         document.getElementById('btnLisensi').addEventListener('click', () => {
             document.querySelector('.modal-content').style.maxWidth = '80%';
@@ -557,7 +576,7 @@
                         <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px; line-height: 1.6; margin-bottom: 15px;">
                             Seluruh fitur premium telah dibuka. Jika aplikasi ini mempercepat kerjaanmu, dukunganmu akan sangat membantu pengembangan fitur selanjutnya.
                         </div>
-                                                                        
+                                                                                        
                         <div style="margin-top: 15px; font-size: 10px; color: #666; font-style: italic;">
                             "Terima kasih banyak atas dukungan para Developer Indonesia!" 🙏
                         </div>
@@ -574,7 +593,7 @@
             modal.style.display = 'flex';
         });
 
-      // --- LOGIKA TOMBOL INFO VERSI (Single Engine + Download Link) ---
+     // --- LOGIKA TOMBOL INFO VERSI (Single Engine + Download Link) ---
         document.getElementById('btnVersions').addEventListener('click', async () => {
             document.querySelector('.modal-content').style.maxWidth = '520px'; 
             
@@ -607,6 +626,20 @@
             const phpDropdown = buatDropdown(versions.php, 'selectPHP');
             const mysqlDropdown = buatDropdown(versions.mysql, 'selectDB');
 
+            const currentCfg = await window.serverAPI.getSettings();
+            const isPMADefault = currentCfg.db_manager === 'phpmyadmin' ? 'selected' : '';
+            const isAdminerDefault = currentCfg.db_manager === 'adminer' ? 'selected' : '';
+            const isMyDBDefault = currentCfg.db_manager === 'ngappidmydb' ? 'selected' : '';
+
+            const dbManagerDropdown = `
+                <select id="selectDBManager" class="input-port" style="width: 100%; text-align: left; padding: 4px; cursor: pointer; background: #0A0A0A; border: 1px solid #333; color: var(--accent-orange); border-radius: 4px; outline: none; font-size: 11px;">
+                    <option value="ngappidmydb" ${isMyDBDefault}>NgAppID MyDB</option>
+                    <option value="phpmyadmin" ${isPMADefault}>PHPMyAdmin</option>
+                    <option value="adminer" ${isAdminerDefault}>Adminer</option>
+                </select>
+            `;
+            const dbManagerActive = currentCfg.db_manager === 'ngappidmydb' ? 'NgMyDB' : (currentCfg.db_manager === 'phpmyadmin' ? 'PMA' : 'Adminer');
+            
             modalTitle.innerText = '📦 App & Stack Management';
             modalBody.innerHTML = `
                 <div style="font-size: 11px; color: var(--text-main); line-height: 1.6;">
@@ -635,6 +668,13 @@
                             <td style="padding: 8px 0;">${mysqlDropdown}</td>
                             <td style="padding: 8px 0; text-align: center;"><a href="#" onclick="window.serverAPI.openExternal('https://mariadb.org/download/')" style="color: var(--accent-orange); text-decoration: none;">🌐 Official</a></td>
                         </tr>
+                        <!-- BARIS DB MANAGER DITAMBAHKAN DI SINI -->
+                        <tr style="border-bottom: 1px dashed #222;">
+                            <td style="padding: 8px 0; color: #8BC34A;"><b>DB Manager</b></td>
+                            <td style="padding: 8px 0; font-family: monospace; color: #fff;">${dbManagerActive}</td>
+                            <td style="padding: 8px 0;">${dbManagerDropdown}</td>
+                            <td style="padding: 8px 0; color: var(--text-muted); text-align: center;"><i>Built-in</i></td>
+                        </tr>
                         <tr style="border-bottom: 1px dashed #222;">
                             <td style="padding: 8px 0; color: #F44336;"><b>Redis</b></td>
                             <td style="padding: 8px 0; font-family: monospace;">v5.0.14</td>
@@ -660,11 +700,15 @@
                 const msg = document.getElementById('saveMsg');
                 const selectPHP = document.getElementById('selectPHP');
                 const selectDB = document.getElementById('selectDB');
+                const selectDBManager = document.getElementById('selectDBManager'); 
                 
                 const phpBaru = selectPHP ? selectPHP.value : "php";
                 const dbBaru = selectDB ? selectDB.value : "mariadb";
+                const dbManagerBaru = selectDBManager ? selectDBManager.value : "ngappidmydb"; 
+                
                 const webPortVal = document.getElementById('portWeb').value || "80";
                 const dbPortVal = document.getElementById('portDB').value || "3307";
+                const pgsqlPortVal = document.getElementById('portPgSQL').value || "5432";
                 
                 btn.innerText = "⏳ MENYIMPAN...";
                 btn.style.opacity = "0.7";
@@ -673,10 +717,17 @@
                     php: phpBaru, 
                     mysql: dbBaru,
                     web_port: webPortVal,
-                    db_port: dbPortVal
+                    db_port: dbPortVal,
+                    pgsql_port: pgsqlPortVal,
+                    db_manager: dbManagerBaru 
                 });
                 
                 if (result.success) {
+                    // Update teks tombol tanpa reload
+                    const textPMA = document.getElementById('textDBManager');
+                   
+                    if (textPMA) textPMA.innerText = (dbManagerBaru === 'ngappidmydb') ? 'NgMyDB' : (dbManagerBaru === 'phpmyadmin' ? 'PMA' : 'Adminer');
+
                     msg.innerText = "Konfigurasi berhasil diterapkan!";
                     msg.style.color = "var(--green-start)";
                     
@@ -694,30 +745,6 @@
                     btn.innerText = "💾 COBA LAGI";
                     btn.style.opacity = "1";
                 }
-            });
-        });
-
-        // --- LOGIKA TOMBOL REBUILD SSL ---
-        document.getElementById('btnRebuildSSL').addEventListener('click', () => {
-            modalTitle.innerText = '🔐 Konfirmasi Rebuild SSL';
-            document.querySelector('.modal-content').style.maxWidth = '80%';
-            
-            modalBody.innerHTML = `
-                <div style="margin-bottom: 20px; font-size: 13px; color: var(--text-main); line-height: 1.5;">
-                    Apakah kamu yakin ingin me-rebuild ulang sertifikat SSL untuk seluruh project kamu?<br><br>
-                    <div style="background: #2a1111; padding: 10px; border-radius: 6px; border-left: 3px solid var(--red-stop); margin-top: 10px;">
-                        <b style="color: var(--red-stop);">⚠️ PERHATIAN PENTING:</b><br>
-                        Pastikan kamu sudah <b>MEMATIKAN (Stop)</b> server Nginx & PHP terlebih dahulu agar file sertifikat tidak terkunci oleh sistem Windows.
-                    </div>
-                </div>
-                <button id="btnProsesSSL" style="width: 100%; background-color: #00BCD4; color: #121212; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s;">🚀 YA, REBUILD SEKARANG</button>
-            `;
-            
-            modal.style.display = 'flex';
-
-            document.getElementById('btnProsesSSL').addEventListener('click', () => {
-                modal.style.display = 'none'; 
-                window.serverAPI.rebuildSSL(); 
             });
         });
         
@@ -760,7 +787,10 @@
                                 <li>Nginx <b>v1.31.3</b></li>
                                 <li>PHP <b>v8.3.32</b>, <b>v8.4.12</b>, <b>v8.5.8</b> <i style="color: #888; font-size: 11px;">(NTS Win32 x64)</i></li>
                                 <li>MySQL MariDB<b>v12.3.2</b> (Win x64)</li>
+                                <li>PostgreSQL <b>v18.6.3</b> (Win x64)</li>
                                 <li>phpMyAdmin <b>v5.2.3</b> (All)</li>
+                                <li>Adminer <b>v6.0.1</b> (All)</li>
+                                <li>NgAppID MyDB <b>v1.0.0</b> (All)</li>
                                 <li>Redis Cache <b>v5.0.14.1</b> (x64)</li>
                                 <li>Mailpit <i>(Mail Catcher)</i></li>
                                 <li>LocalTunnel <i>(Live Public Tunnel)</i></li>
@@ -963,6 +993,7 @@
 
                 if (data.id === 'lampuWeb') { state.web = isRunning; ubahTombol('btnTogglePHP', isRunning, 'PHP'); } 
                 else if (data.id === 'lampuDB') { state.db = isRunning; ubahTombol('btnToggleDB', isRunning, 'MYSQL'); } 
+                else if (data.id === 'lampuPgSQL') { state.pgsql = isRunning; ubahTombol('btnTogglePgSQL', isRunning, 'PGSQL'); }
                 else if (data.id === 'lampuRedis') { state.redis = isRunning; ubahTombol('btnToggleRedis', isRunning, 'REDIS'); } 
                 else if (data.id === 'lampuMail') { 
                     state.mail = isRunning; 
@@ -1008,6 +1039,10 @@
         document.getElementById('btnBackupDB').addEventListener('click', () => {
             const port = document.getElementById('portDB').value || 3307;
             window.serverAPI.backupDB(port);
+        });
+        document.getElementById('btnTogglePgSQL').addEventListener('click', () => { 
+            const port = document.getElementById('portPgSQL').value || 5432;
+            state.pgsql ? window.serverAPI.stopPgSQL() : window.serverAPI.startPgSQL(port); 
         });
         document.getElementById('btnToggleRedis').addEventListener('click', () => { state.redis ? window.serverAPI.stopRedis() : window.serverAPI.startRedis(); });
         document.getElementById('btnToggleMail').addEventListener('click', () => { state.mail ? window.serverAPI.stopMail() : window.serverAPI.startMail(); });
